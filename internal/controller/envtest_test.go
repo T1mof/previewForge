@@ -11,6 +11,7 @@ import (
 
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
+	networkingv1 "k8s.io/api/networking/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
@@ -59,6 +60,17 @@ func TestEnvtest(t *testing.T) {
 		if err := c.Create(ctx, bad); !apierrors.IsInvalid(err) {
 			t.Fatalf("schema must reject image whitespace: %v", err)
 		}
+		bad.Spec.Image = "nginx"
+		for _, ingress := range []*platformv1.IngressSpec{
+			{Host: "127.0.0.1", ClassName: "traefik"},
+			{Host: "*.example.test", ClassName: "traefik"},
+			{Host: "preview.example.test"},
+		} {
+			bad.Spec.Ingress = ingress
+			if err := c.Create(ctx, bad); !apierrors.IsInvalid(err) {
+				t.Fatalf("schema must reject ingress %+v: %v", ingress, err)
+			}
+		}
 	})
 
 	startManager := func() func() {
@@ -102,6 +114,7 @@ func TestEnvtest(t *testing.T) {
 		}
 	})
 	p := &platformv1.PreviewEnvironment{ObjectMeta: metav1.ObjectMeta{Name: "integration"}, Spec: platformv1.PreviewEnvironmentSpec{Image: "nginx:alpine"}}
+	p.Spec.Ingress = &platformv1.IngressSpec{Host: "integration.example.test", ClassName: "traefik"}
 	if err := c.Create(ctx, p); err != nil {
 		t.Fatal(err)
 	}
@@ -111,6 +124,7 @@ func TestEnvtest(t *testing.T) {
 	key := types.NamespacedName{Name: AppName, Namespace: NamespaceName(p)}
 	d := &appsv1.Deployment{}
 	svc := &corev1.Service{}
+	ingress := &networkingv1.Ingress{}
 	eventually(t, func() error {
 		if err := c.Get(ctx, key, d); err != nil {
 			return err
@@ -118,10 +132,16 @@ func TestEnvtest(t *testing.T) {
 		if err := c.Get(ctx, key, svc); err != nil {
 			return err
 		}
+		if err := c.Get(ctx, key, ingress); err != nil {
+			return err
+		}
 		return nil
 	})
 	if svc.Spec.ClusterIP == "" || !ownedBy(d, p) || !ownedBy(svc, p) {
 		t.Fatal("real API must allocate Service IP and preserve ownership")
+	}
+	if !ownedBy(ingress, p) || ingress.Spec.Rules[0].Host != "integration.example.test" {
+		t.Fatal("real API must preserve Ingress route and ownership")
 	}
 	// Verify API defaulting does not make reconciliation continually write a Deployment.
 	r := &PreviewEnvironmentReconciler{Client: c, APIReader: c, Scheme: scheme}
@@ -153,6 +173,44 @@ func TestEnvtest(t *testing.T) {
 		}
 		if p.Status.Phase != platformv1.PhaseReady {
 			return fmt.Errorf("phase is %s", p.Status.Phase)
+		}
+		return nil
+	})
+	if p.Status.URL != "http://integration.example.test" {
+		t.Fatalf("configured route URL missing: %s", p.Status.URL)
+	}
+	// A real Ingress watch must recreate a deleted route under ServiceAccount RBAC.
+	oldIngressUID := ingress.UID
+	if err := c.Delete(ctx, ingress); err != nil {
+		t.Fatal(err)
+	}
+	eventually(t, func() error {
+		if err := c.Get(ctx, key, ingress); err != nil {
+			return err
+		}
+		if ingress.UID == oldIngressUID {
+			return fmt.Errorf("old ingress still exists")
+		}
+		return nil
+	})
+	// Disabling ingress must remove only its owned route and clear the advertised URL.
+	eventually(t, func() error {
+		if err := c.Get(ctx, client.ObjectKeyFromObject(p), p); err != nil {
+			return err
+		}
+		before := p.DeepCopy()
+		p.Spec.Ingress = nil
+		return c.Patch(ctx, p, client.MergeFromWithOptions(before, client.MergeFromWithOptimisticLock{}))
+	})
+	eventually(t, func() error {
+		if err := c.Get(ctx, key, ingress); !apierrors.IsNotFound(err) {
+			return fmt.Errorf("ingress not removed: %v", err)
+		}
+		if err := c.Get(ctx, client.ObjectKeyFromObject(p), p); err != nil {
+			return err
+		}
+		if p.Status.URL != "" {
+			return fmt.Errorf("disabled route URL remains")
 		}
 		return nil
 	})

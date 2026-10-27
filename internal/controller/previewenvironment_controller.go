@@ -8,6 +8,7 @@ import (
 
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
+	networkingv1 "k8s.io/api/networking/v1"
 	"k8s.io/apimachinery/pkg/api/equality"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/api/meta"
@@ -38,6 +39,7 @@ type PreviewEnvironmentReconciler struct {
 // +kubebuilder:rbac:groups="",resources=namespaces,verbs=get;list;watch;create;update;patch;delete
 // +kubebuilder:rbac:groups="",resources=services,verbs=get;list;watch;create;update;patch
 // +kubebuilder:rbac:groups=apps,resources=deployments,verbs=get;list;watch;create;update;patch
+// +kubebuilder:rbac:groups=networking.k8s.io,resources=ingresses,verbs=get;list;watch;create;patch;delete
 
 func (r *PreviewEnvironmentReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
 	p := &platformv1.PreviewEnvironment{}
@@ -58,6 +60,7 @@ func (r *PreviewEnvironmentReconciler) Reconcile(ctx context.Context, req ctrl.R
 		}
 		return ctrl.Result{RequeueAfter: time.Millisecond}, nil
 	}
+	p.Status.URL = ""
 	spec, err := normalizedSpec(p.Spec)
 	if err != nil {
 		return r.failure(ctx, p, "InvalidSpec", err)
@@ -97,8 +100,12 @@ func (r *PreviewEnvironmentReconciler) Reconcile(ctx context.Context, req ctrl.R
 	if err := r.ensure(ctx, p, s, func() { configureService(s, p, spec) }); err != nil {
 		return r.failure(ctx, p, "ProvisioningFailed", err)
 	}
+	ingressPending, err := r.reconcileIngress(ctx, p, ns.Name, spec)
+	if err != nil {
+		return r.failure(ctx, p, "IngressFailed", err)
+	}
 	phase, reason, message := readiness(d, *spec.Replicas)
-	if !d.DeletionTimestamp.IsZero() || !s.DeletionTimestamp.IsZero() {
+	if !d.DeletionTimestamp.IsZero() || !s.DeletionTimestamp.IsZero() || ingressPending {
 		phase, reason, message = platformv1.PhaseDeploying, "ResourceTerminating", "waiting for managed resources to finish deletion"
 	}
 	if err := r.updateStatus(ctx, p, phase, reason, message, d.Status.ReadyReplicas); err != nil {
@@ -149,6 +156,7 @@ func (r *PreviewEnvironmentReconciler) updateStatus(ctx context.Context, p *plat
 	// generation can still miss a newer condition or Ready transition timestamp.
 	current.Status.Namespace = p.Status.Namespace
 	current.Status.ServiceEndpoint = p.Status.ServiceEndpoint
+	current.Status.URL = p.Status.URL
 	current.Status.ExpiresAt = p.Status.ExpiresAt.DeepCopy()
 	current.Status.Phase = phase
 	current.Status.Message = message
@@ -240,6 +248,7 @@ func (r *PreviewEnvironmentReconciler) SetupWithManager(mgr ctrl.Manager) error 
 		Owns(&corev1.Namespace{}).
 		Owns(&appsv1.Deployment{}).
 		Owns(&corev1.Service{}).
+		Owns(&networkingv1.Ingress{}).
 		WithOptions(controller.Options{MaxConcurrentReconciles: 4}).
 		Complete(r)
 }

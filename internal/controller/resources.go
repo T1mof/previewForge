@@ -3,6 +3,7 @@ package controller
 import (
 	"crypto/sha256"
 	"fmt"
+	"net"
 	"strings"
 	"unicode"
 
@@ -11,6 +12,7 @@ import (
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/intstr"
+	"k8s.io/apimachinery/pkg/util/validation"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 
@@ -65,6 +67,17 @@ func normalizedSpec(spec platformv1.PreviewEnvironmentSpec) (platformv1.PreviewE
 	}
 	if spec.TTLSeconds < 1 || spec.TTLSeconds > 604800 {
 		return spec, fmt.Errorf("ttlSeconds must be between 1 and 604800")
+	}
+	if spec.Ingress != nil {
+		if net.ParseIP(spec.Ingress.Host) != nil || len(validation.IsDNS1123Subdomain(spec.Ingress.Host)) != 0 {
+			return spec, fmt.Errorf("ingress.host must be an exact DNS hostname")
+		}
+		if len(validation.IsDNS1123Subdomain(spec.Ingress.ClassName)) != 0 {
+			return spec, fmt.Errorf("ingress.className must be a DNS subdomain")
+		}
+		if spec.Ingress.TLSSecretName != "" && len(validation.IsDNS1123Subdomain(spec.Ingress.TLSSecretName)) != 0 {
+			return spec, fmt.Errorf("ingress.tlsSecretName must be a valid Secret name")
+		}
 	}
 	return spec, nil
 }

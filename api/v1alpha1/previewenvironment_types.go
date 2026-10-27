@@ -32,13 +32,36 @@ type PreviewEnvironmentSpec struct {
 	// +kubebuilder:validation:Minimum=1
 	// +kubebuilder:validation:Maximum=604800
 	TTLSeconds int64 `json:"ttlSeconds,omitempty"`
+	// Ingress exposes the application through an installed Ingress controller.
+	// +optional
+	Ingress *IngressSpec `json:"ingress,omitempty"`
+}
+
+type IngressSpec struct {
+	// Host is an exact DNS hostname; wildcard hosts and IP addresses are not supported.
+	// +kubebuilder:validation:MaxLength=253
+	// +kubebuilder:validation:Pattern=`^[a-z0-9]([-a-z0-9]{0,61}[a-z0-9])?(\.[a-z0-9]([-a-z0-9]{0,61}[a-z0-9])?)*$`
+	// +kubebuilder:validation:XValidation:rule="!isIP(self)",message="host must be a DNS name rather than an IP address"
+	Host string `json:"host"`
+	// ClassName explicitly selects an IngressClass installed by the cluster administrator.
+	// +kubebuilder:validation:MaxLength=253
+	// +kubebuilder:validation:Pattern=`^[a-z0-9]([-a-z0-9]{0,61}[a-z0-9])?(\.[a-z0-9]([-a-z0-9]{0,61}[a-z0-9])?)*$`
+	ClassName string `json:"className"`
+	// TLSSecretName references a TLS Secret provisioned separately in the preview Namespace.
+	// The operator does not read, copy or create Secrets.
+	// +optional
+	// +kubebuilder:validation:MaxLength=253
+	// +kubebuilder:validation:Pattern=`^[a-z0-9]([-a-z0-9]{0,61}[a-z0-9])?(\.[a-z0-9]([-a-z0-9]{0,61}[a-z0-9])?)*$`
+	TLSSecretName string `json:"tlsSecretName,omitempty"`
 }
 
 type PreviewEnvironmentStatus struct {
 	// +kubebuilder:validation:Enum=Pending;Deploying;Ready;Failed;Expired
-	Phase              Phase        `json:"phase,omitempty"`
-	Namespace          string       `json:"namespace,omitempty"`
-	ServiceEndpoint    string       `json:"serviceEndpoint,omitempty"`
+	Phase           Phase  `json:"phase,omitempty"`
+	Namespace       string `json:"namespace,omitempty"`
+	ServiceEndpoint string `json:"serviceEndpoint,omitempty"`
+	// URL is the configured Ingress route, not proof of DNS, TLS or external reachability.
+	URL                string       `json:"url,omitempty"`
 	ObservedGeneration int64        `json:"observedGeneration,omitempty"`
 	ReadyReplicas      int32        `json:"readyReplicas,omitempty"`
 	ExpiresAt          *metav1.Time `json:"expiresAt,omitempty"`

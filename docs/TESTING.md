@@ -2,7 +2,17 @@
 
 Актуализировано: 2026-10-27. Среда: Windows/amd64, Go 1.26.1; Ubuntu WSL2/Linux amd64, Go 1.26.9 и gcc 13.3. Локальный Kubernetes e2e и GitHub workflow подтверждены; этап 1 завершён.
 
-## GitHub CI (2026-10-27)
+## Ingress и локальная демонстрация (2026-10-27)
+
+Windows `scripts/check.ps1 -Generate` — **PASS**, controller-gen 0.22.0, gofmt/vet/test/build/Kustomize, покрытие контроллера 92,0%. Linux `scripts/linux-checks.sh` — **PASS**: race 3,054 с, envtest 12,66 с / пакет 13,917 с под ServiceAccount RBAC. Envtest проверил CRD host/class, запрет IP/wildcard, создание Ingress, owner UID, настоящее watch-восстановление и отключение/очистку URL.
+
+Локальный новый `previewforge-test-ingress-20261027-a`: **14/14 PASS**, E2E exit 0, cleanup exit 0, report gate PASS; кластер удалён. Новый check `ingress` выполнил настоящий HTTP через Traefik 3.7.16, восстановление маршрута, drift repair, смену host/URL и 404 после отключения. Ответы — `bin/runs/previewforge-test-ingress-20261027-a/artifacts/ingress-http.txt`; полный лог — `bin/ci/previewforge-test-ingress-20261027-a.log`. Локальный прогон выполнен до commit ветки; GitHub SHA для него не заявляется.
+
+Demo `previewforge-test-demo-20261027-a` с портом 80: **FAIL** на Docker bind — Windows запретила использование порта; **cleanup PASS**. Default demo-порт изменён на 8080 без изменения системных настроек. Новый `previewforge-test-demo-20261027-b`: **PASS**, настоящий запрос с хоста через Ingress получил nginx на http://localhost:8080. Кластер намеренно оставлен для демонстрации, приложение подчиняется TTL; отчёт — `bin/runs/previewforge-test-demo-20261027-b/artifacts/demo.txt`, HTTP — `demo-http.txt`.
+
+Регрессии скриптов: Windows 7/7 и Bash 9/9 isolation, 21/21 fake-CLI cleanup/demo, 4/4 synthetic report gate — **PASS**; ShellCheck/Actionlint — **PASS**. Новые проверки подтверждают loopback config, отказ внедрения через port, cleanup demo при HTTP ошибке, сохранение demo при успехе и отказ существующего run/claim до cleanup traps. Это отдельные fake-CLI проверки; настоящий HTTP подтверждён указанными kind-прогонами. TLS handshake не проверялся.
+
+## GitHub CI этапа 1 (2026-10-27)
 
 [Run 40576650171](https://github.com/T1mof/previewForge/actions/runs/40576650171), commit `7d0a1561d5f6b49c2c360907fa14e7be0e9390e7`: оба job **SUCCESS**. Linux race 3,285 с, envtest 7,44 с / пакет 8,501 с под ServiceAccount RBAC; настоящий kind e2e **13/13 PASS**, cleanup и report gate PASS. Скачанный artifact отдельно проверен по digest, commit, двум HTTP-ответам и всем check ID. Подробности — в [отчёт CI](verification/2026-10-27-stage1.md).
 

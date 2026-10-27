@@ -6,7 +6,7 @@ Kubernetes API хранит spec, status, owner references, finalizers и вре
 
 ## Scope и владение
 
-`PreviewEnvironment` имеет scope Cluster. Namespace — cluster-scoped dependent; namespaced CR не может быть его владельцем. Namespace, Deployment и Service имеют прямую controller owner reference на CR с UID. Это допустимо для cluster-scoped владельца и позволяет `Owns` отправлять события всех трёх типов в очередь CR.
+`PreviewEnvironment` имеет scope Cluster. Namespace — cluster-scoped dependent; namespaced CR не может быть его владельцем. Namespace, Deployment, Service и необязательный Ingress имеют прямую controller owner reference на CR с UID. Это допустимо для cluster-scoped владельца и позволяет `Owns` отправлять события этих типов в очередь CR.
 
 Имя Namespace: `forge-<нормализованное имя до 40 символов>-<12 hex SHA-256 UID>`. Оно укладывается в DNS label, стабильно после рестарта, отличается при пересоздании одноимённого CR. Хеш не заменяет проверку владельца: даже при коллизии существующий чужой ресурс не принимается под управление.
 
@@ -19,7 +19,7 @@ Labels `app.kubernetes.io/managed-by=previewforge` и `platform.previewforge.dev
 3. Нормализовать/проверить spec, вычислить Namespace и deadline.
 4. При истёкшем TTL записать `Expired` и запросить удаление CR с UID/resourceVersion preconditions.
 5. Создать или согласовать Namespace; при Terminating дождаться удаления.
-6. Создать/согласовать Deployment и Service.
+6. Создать/согласовать Deployment, Service и необязательный Ingress; при отключении дождаться удаления принадлежащего CR маршрута.
 7. Определить готовность rollout, записать status при изменении.
 8. Перепроверить через минимум из 30 секунд и оставшегося TTL. Watch обычно реагирует быстрее.
 
@@ -51,9 +51,13 @@ Manager запускает четыре worker; workqueue сериализует
 
 ## Границы изоляции
 
-Оператор не читает Secrets и не управляет Pod напрямую. ClusterRole ограничена PreviewEnvironment, Namespace, Deployment и Service; Lease и запись Event для leader election доступны через Role только в `previewforge-system`. Динамические Namespace требуют cluster-wide разрешений на перечисление и создание ресурсов: RBAC не умеет ограничивать права произвольными owner labels. Ownership guards являются логикой приложения, а не защитой от компрометации самого оператора.
+Оператор не читает Secrets и не управляет Pod напрямую. ClusterRole ограничена PreviewEnvironment, Namespace, Deployment, Service и Ingress; Lease и запись Event для leader election доступны через Role только в `previewforge-system`. Динамические Namespace требуют cluster-wide разрешений на перечисление и создание ресурсов: RBAC не умеет ограничивать права произвольными owner labels. Ownership guards являются логикой приложения, а не защитой от компрометации самого оператора.
 
 На app container: requests 100m CPU/64Mi, limits 500m/256Mi, 1–10 реплик и TCP readiness. ServiceAccount token в app Pod отключён. Ограничения всего Namespace, NetworkPolicy/CNI, Pod Security для недоверенных workloads и admission-политики остаются будущей работой; текущий этап предназначен для доверенных приложений в локальном тестовом кластере.
+
+## Необязательный Ingress
+
+`spec.ingress` задаёт точный DNS host, IngressClass и необязательную ссылку на TLS Secret в preview Namespace. Стандартный networking/v1 Ingress направляет `/` в именованный Service port. Он использует общий ownership/optimistic-lock reconcile и Owns watch. При отключении APIReader заново проверяет owner UID перед Delete с UID/RV preconditions; Ready ждёт исчезновения удаляемого маршрута. `status.url` описывает конфигурацию маршрута, а внешняя доступность проверяется отдельным HTTP e2e. PreviewForge не получает Secrets RBAC; тестовый Traefik использует отдельный ServiceAccount. Подробности — [INGRESS.md](INGRESS.md).
 
 ## Проверяемость
 

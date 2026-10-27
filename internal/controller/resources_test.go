@@ -43,6 +43,10 @@ func TestNormalizedSpec(t *testing.T) {
 		{"ttl", platformv1.PreviewEnvironmentSpec{Image: "nginx", TTLSeconds: -1}},
 		{"too many replicas", platformv1.PreviewEnvironmentSpec{Image: "nginx", Replicas: int32Ptr(11)}},
 		{"zero replicas", platformv1.PreviewEnvironmentSpec{Image: "nginx", Replicas: int32Ptr(0)}},
+		{"ingress IP", platformv1.PreviewEnvironmentSpec{Image: "nginx", Ingress: &platformv1.IngressSpec{Host: "127.0.0.1", ClassName: "traefik"}}},
+		{"ingress wildcard", platformv1.PreviewEnvironmentSpec{Image: "nginx", Ingress: &platformv1.IngressSpec{Host: "*.example.test", ClassName: "traefik"}}},
+		{"missing ingress class", platformv1.PreviewEnvironmentSpec{Image: "nginx", Ingress: &platformv1.IngressSpec{Host: "preview.example.test"}}},
+		{"invalid TLS Secret", platformv1.PreviewEnvironmentSpec{Image: "nginx", Ingress: &platformv1.IngressSpec{Host: "preview.example.test", ClassName: "traefik", TLSSecretName: "../secret"}}},
 	} {
 		t.Run(test.name, func(t *testing.T) {
 			if _, err := normalizedSpec(test.spec); err == nil {

@@ -9,6 +9,7 @@ pf_validate_cluster
 context="kind-$PREVIEWFORGE_TEST_CLUSTER"
 kubeconfig="$PWD/bin/runs/$PREVIEWFORGE_TEST_CLUSTER/kubeconfig"
 directory=$(pf_run_directory)
+[[ ! -e "$directory" ]] || { echo 'Refusing an existing run directory before installing cleanup traps' >&2; exit 1; }
 ns=''
 k() { kubectl --kubeconfig "$kubeconfig" --context "$context" --request-timeout=15s "$@"; }
 record_check() { printf 'PASS: %s: %s\n' "$1" "$2" | tee -a "$directory/artifacts/checks.txt"; }
@@ -23,8 +24,10 @@ finish() {
       k get namespaces,previewenvironments -o yaml > "$directory/artifacts/environments.yaml" 2>&1 || true
       k get deployments,pods,services -A -o wide > "$directory/artifacts/workloads.txt" 2>&1 || true
       k get pods -A -o yaml > "$directory/artifacts/pods.yaml" 2>&1 || true
+      k get ingresses -A -o yaml > "$directory/artifacts/ingresses.yaml" 2>&1 || true
       k get events -A --sort-by=.lastTimestamp > "$directory/artifacts/events.txt" 2>&1 || true
       k -n previewforge-system logs deployment/previewforge-controller-manager --tail=300 > "$directory/artifacts/operator.log" 2>&1 || true
+      k -n previewforge-ingress-system logs deployment/traefik --tail=200 > "$directory/artifacts/traefik.log" 2>&1 || true
       if command -v timeout >/dev/null; then
         timeout 60s kind export logs "$directory/artifacts/kind" --name "$PREVIEWFORGE_TEST_CLUSTER" || true
       fi
@@ -134,6 +137,9 @@ wait_value 60 smoke_succeeded
 k -n "$ns" logs smoke | tee "$directory/artifacts/http.txt"
 grep -q 'Welcome to nginx' "$directory/artifacts/http.txt"
 record_check http 'real smoke Pod received application HTTP through Service DNS and ClusterIP; EndpointSlice ready'
+
+# Optional API exposure is tested with a real Ingress controller in this run only.
+source scripts/e2e-ingress.sh
 
 create_preview() {
   local name=$1 ttl=$2 port=${3:-80}

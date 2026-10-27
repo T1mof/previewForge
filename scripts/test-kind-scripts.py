@@ -50,7 +50,10 @@ def main():
         source.write_text(SOURCE, encoding="utf-8")
         executable = work / ("fake.exe" if WINDOWS else "fake")
         subprocess.run(["go", "build", "-o", str(executable), str(source)], check=True, cwd=ROOT)
-        for scenario in ("fresh", "existing", "existing_kubeconfig", "existing_run", "invalid", "remote_docker", "remote_docker_host"):
+        scenarios = ("fresh", "existing", "existing_kubeconfig", "existing_run", "invalid", "remote_docker", "remote_docker_host")
+        if not WINDOWS:
+            scenarios += ("fresh_port", "invalid_port")
+        for scenario in scenarios:
             fixture = work / scenario
             (fixture / "scripts").mkdir(parents=True)
             (fixture / "bin").mkdir()
@@ -82,13 +85,14 @@ def main():
                        PF_TEST_LOG=str(log), PF_TEST_EXISTING=cluster if scenario == "existing" else "",
                        PF_TEST_DOCKER_ENDPOINT="ssh://remote.example" if scenario == "remote_docker" else "unix:///var/run/docker.sock",
                        DOCKER_HOST="ssh://remote.example" if scenario == "remote_docker_host" else "",
+                       PREVIEWFORGE_DEMO_HTTP_PORT="8080" if scenario == "fresh_port" else "8080\nnodes: []" if scenario == "invalid_port" else "",
                        PREVIEWFORGE_TEST_CLUSTER=cluster)
             command = (["powershell", "-NoProfile", "-ExecutionPolicy", "Bypass", "-File", str(script), "-ClusterName", cluster]
                        if WINDOWS else ["bash", str(script)])
             result = subprocess.run(command, cwd=fixture, env=env, text=True, capture_output=True, timeout=30)
             calls = [json.loads(line) for line in log.read_text(encoding="utf-8").splitlines()] if log.exists() else []
             assert sentinel.read_text(encoding="utf-8") == "unrelated current context"
-            if scenario == "fresh":
+            if scenario in ("fresh", "fresh_port"):
                 assert result.returncode == 0, result.stdout + result.stderr
                 kind_calls = [call for call in calls if call[0] == "kind"]
                 assert any(call[1:3] == ["create", "cluster"] for call in kind_calls)
@@ -107,6 +111,14 @@ def main():
                 assert any(call[0:2] == ["docker", "build"] and option(call, "-t") == image for call in calls)
                 assert any(call[0:3] == ["kind", "load", "docker-image"] and call[3] == image for call in calls)
                 assert "newTag: " + cluster in (kubeconfig.parent / "kustomization.yaml").read_text(encoding="utf-8-sig")
+                create = next(call for call in kind_calls if call[1:3] == ["create", "cluster"])
+                if scenario == "fresh_port":
+                    config = Path(option(create, "--config"))
+                    assert config.resolve().is_relative_to(kubeconfig.parent.resolve())
+                    value = config.read_text()
+                    assert 'listenAddress: "127.0.0.1"' in value and 'hostPort: 8080' in value and 'containerPort: 30080' in value
+                else:
+                    assert "--config" not in create
             else:
                 assert result.returncode != 0, "unsafe input was accepted"
                 assert not any(call[0] == "kubectl" or call[0] == "kind" and call[1] != "get" for call in calls), calls

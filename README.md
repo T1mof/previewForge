@@ -12,6 +12,8 @@ flowchart LR
     R --> NS[Выделенный Namespace]
     NS --> D[Deployment]
     NS --> S[ClusterIP Service]
+    NS --> I[Необязательный Ingress]
+    I --> S
     D --> P[Pods с TCP readiness probe]
     R --> ST[Status и Ready condition]
     TTL[creationTimestamp + TTL] --> R
@@ -23,13 +25,14 @@ flowchart LR
 - CRD `platform.previewforge.dev/v1alpha1` с валидацией, значениями по умолчанию и status subresource.
 - Namespace с именем на основе имени и UID CR; проверка controller owner reference перед изменениями.
 - Deployment с CPU/memory requests и limits, TCP readiness probe; Service типа ClusterIP.
+- Необязательный Ingress с явными host/class, ссылкой на TLS Secret и `status.url`; безопасное отключение, исправление drift и watch восстановления.
 - Фазы `Pending`, `Deploying`, `Ready`, `Failed`, `Expired`, condition `Ready`, диагностические сообщения.
 - Исправление управляемых полей, восстановление удалённых ресурсов, повторная обработка ошибок API.
 - TTL от времени создания CR и finalizer, ожидающий фактического удаления Namespace.
 - Watch дочерних ресурсов, четыре reconcile worker, optimistic locking, leader election в Deployment оператора.
 - Unit-тесты, envtest suite для Linux/macOS и сценарий e2e в выделенном kind-кластере.
 
-Namespace обеспечивает разделение ресурсов и удаление окружения целиком. Сетевая изоляция между Namespace ещё не реализована: для неё необходимы NetworkPolicy и совместимый CNI. Приложение доступно внутри кластера; Ingress появится позднее.
+Namespace обеспечивает разделение ресурсов и удаление окружения целиком. Сетевая изоляция между Namespace ещё не реализована: для неё необходимы NetworkPolicy и совместимый CNI. По умолчанию приложение доступно внутри кластера; внешний HTTP(S) включается через необязательный Ingress. API, URL и локальный demo описаны в [INGRESS.md](docs/INGRESS.md).
 
 ## Зависимости и структура
 
@@ -101,6 +104,8 @@ make test-e2e
 Он проверяет настоящие Ready/Pod и HTTP через Service DNS/ClusterIP, запрет Ready до готовности приложения, исправление replicas, восстановление Deployment, рестарт, TTL при работающем операторе и после простоя, удержание finalizer и отказ изменения/удаления чужих ресурсов. E2e сохраняет диагностику в `bin/runs/<cluster>/artifacts`, затем удаляет только созданный им кластер, в том числе при ошибке. Demo для ручной работы сохраняет кластер.
 
 В Windows полный e2e также можно запустить через Git Bash без WSL Integration; команды приведены в [VERIFICATION.md](docs/VERIFICATION.md#полный-e2e-в-git-bash-без-wsl-integration).
+
+Демонстрация приложения в браузере: `make ingress-demo` или `bash scripts/ingress-demo.sh` из настроенного Git Bash. Новый локальный kind получает loopback listener и настоящий Traefik; скрипт проверяет HTTP и оставляет кластер для работы. По умолчанию URL — `http://localhost:8080`. [Инструкция и cleanup](docs/INGRESS.md#локальный-demo).
 
 При недоступном локальном Docker есть [GitHub Actions workflow](.github/workflows/operator-e2e.yml): Linux race/envtest, затем отдельный kind на GitHub-hosted Ubuntu с автоматической очисткой и проверкой полноты результатов. Подготовленный workflow не означает состоявшийся CI-прогон. Инструкция запуска и критерии успешного результата — в [VERIFICATION.md](docs/VERIFICATION.md). Остаточные риски и минимальные меры защиты — в [SECURITY.md](docs/SECURITY.md).
 

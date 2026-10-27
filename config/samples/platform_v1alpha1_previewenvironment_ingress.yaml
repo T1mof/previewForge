@@ -1,0 +1,14 @@
+apiVersion: platform.previewforge.dev/v1alpha1
+kind: PreviewEnvironment
+metadata:
+  name: pr-42-ingress
+spec:
+  image: nginx:alpine
+  replicas: 2
+  port: 80
+  ttlSeconds: 3600
+  ingress:
+    host: preview.example.test
+    className: previewforge-demo
+    # Optional: a TLS Secret provisioned separately in this preview Namespace.
+    # tlsSecretName: preview-tls

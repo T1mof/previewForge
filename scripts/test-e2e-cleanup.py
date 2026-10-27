@@ -30,6 +30,10 @@ func main() {
     file,err:=os.OpenFile(os.Getenv("PF_TEST_LOG"), os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0600)
     if err!=nil { panic(err) }; json.NewEncoder(file).Encode(append([]string{name}, os.Args[1:]...)); file.Close()
     fail:=os.Getenv("PF_FAIL"); state:=os.Getenv("PF_STATE"); cluster:=os.Getenv("PREVIEWFORGE_TEST_CLUSTER")
+    if name=="curl" {
+        if fail=="demo-http" { os.Exit(17) }
+        if err:=os.WriteFile(option("-o"), []byte("Welcome to nginx\n"), 0600); err!=nil { panic(err) }
+    }
     if name=="docker" {
         if strings.HasPrefix(args,"context inspect") { fmt.Println(os.Getenv("PF_ENDPOINT")) }
         if args=="info" && fail=="docker-info" { os.Exit(17) }
@@ -61,6 +65,7 @@ func main() {
             if fail=="e2e-setup" { os.Exit(17) }
             if strings.Contains(args,"status.namespace") { fmt.Println("forge-fixture") }
             if strings.Contains(args,"status.phase") { fmt.Println("Pending 0") }
+            if strings.Contains(args,"status.url") { fmt.Println("http://localhost") }
         }
         if strings.Contains(args,"get namespaces,previewenvironments") && fail=="diagnostics" { os.Exit(17) }
     }
@@ -85,12 +90,12 @@ def main():
         subprocess.run(["go", "build", "-o", str(executable), str(source)], check=True, cwd=ROOT)
         scenarios = ("cleanup-success", "missing-claim", "wrong-token", "changed-endpoint", "remote-endpoint",
                      "invalid-name", "existing-cluster", "docker-info", "create", "build", "apply",
-                     "e2e-setup", "assertion", "diagnostics", "cleanup", "signal", "successful-body")
+                     "e2e-setup", "assertion", "diagnostics", "cleanup", "signal", "successful-body", "demo-http", "demo-success", "existing-run", "demo-existing-run")
         for scenario in scenarios:
             fixture = work / scenario
             scripts = fixture / "scripts"
             scripts.mkdir(parents=True)
-            for script in ("kind-demo.sh", "kind-lifecycle.sh", "cleanup-kind.sh", "e2e.sh", "verify-e2e-result.sh"):
+            for script in ("kind-demo.sh", "ingress-demo.sh", "kind-lifecycle.sh", "cleanup-kind.sh", "e2e.sh", "e2e-ingress.sh", "verify-e2e-result.sh"):
                 shutil.copy2(ROOT / "scripts" / script, scripts / script)
             if scenario == "successful-body":
                 # Exercise the successful EXIT path without pretending to run
@@ -100,7 +105,7 @@ def main():
                 script.write_text(handler + "bash scripts/kind-demo.sh\nexit 0\n")
             tools = fixture / "tools"
             tools.mkdir()
-            for tool in ("docker", "kind", "kubectl"):
+            for tool in ("docker", "kind", "kubectl", "curl"):
                 shutil.copy2(executable, tools / tool)
             log = fixture / "calls.jsonl"
             state = fixture / "cluster-state"
@@ -108,21 +113,22 @@ def main():
             sentinel.write_text("user context must stay untouched")
             directory = fixture / "bin" / "runs" / CLUSTER
             standalone = scenario in scenarios[:6]
-            if standalone or scenario == "existing-cluster":
+            if standalone or scenario in ("existing-cluster", "existing-run", "demo-existing-run"):
                 state.write_text(CLUSTER)
-            if standalone and scenario != "missing-claim":
+            if standalone and scenario != "missing-claim" or scenario in ("existing-run", "demo-existing-run"):
                 directory.mkdir(parents=True)
                 (directory / ".cluster-owner").write_text(TOKEN)
                 (directory / ".docker-endpoint").write_text("unix:///var/run/docker.sock")
                 (directory / ".docker-host").write_text("")
             env = os.environ.copy()
             env.update(PATH=str(tools) + os.pathsep + env["PATH"], KUBECONFIG=str(sentinel), DOCKER_HOST="",
+                       PREVIEWFORGE_DEMO_HTTP_PORT="",
                        PREVIEWFORGE_TEST_CLUSTER="production" if scenario == "invalid-name" else CLUSTER,
                        PREVIEWFORGE_RUN_TOKEN="f" * 32 if scenario == "wrong-token" else TOKEN,
                        PF_TEST_LOG=str(log), PF_STATE=str(state), PF_FAIL=scenario,
                        PF_ENDPOINT=("unix:///different.sock" if scenario == "changed-endpoint" else
                                     "ssh://remote.example" if scenario == "remote-endpoint" else "unix:///var/run/docker.sock"))
-            command = ["bash", str(scripts / ("cleanup-kind.sh" if standalone else "e2e.sh"))]
+            command = ["bash", str(scripts / ("cleanup-kind.sh" if standalone else "ingress-demo.sh" if scenario.startswith("demo-") else "e2e.sh"))]
             if scenario == "signal":
                 with (fixture / "output.txt").open("w") as output:
                     process = subprocess.Popen(command, cwd=fixture, env=env, stdout=output, stderr=output, start_new_session=True)
@@ -144,8 +150,13 @@ def main():
                 returncode, result_output = result.returncode, result.stdout + result.stderr
             calls = calls_at(log)
             deletes = [call for call in calls if call[:3] == ["kind", "delete", "cluster"]]
-            protected = standalone and scenario != "cleanup-success" or scenario in ("existing-cluster", "docker-info")
-            if protected:
+            protected = standalone and scenario != "cleanup-success" or scenario in ("existing-cluster", "docker-info", "existing-run", "demo-existing-run")
+            if scenario == "demo-success":
+                assert not deletes and state.read_text() == CLUSTER
+                assert (directory / ".cluster-owner").read_text().strip() == TOKEN
+                assert "PASS: real HTTP through Ingress" in (directory / "artifacts" / "demo.txt").read_text()
+                assert "URL: http://localhost:8080" in (directory / "artifacts" / "demo.txt").read_text()
+            elif protected:
                 assert not deletes, calls
                 assert not any(call[0] == "kubectl" for call in calls), calls
                 if scenario != "docker-info":
@@ -158,7 +169,7 @@ def main():
                 else:
                     assert not state.exists() and not (directory / ".cluster-owner").exists()
                     assert "absence verified" in (directory / "cleanup.txt").read_text()
-            expected_success = scenario in ("cleanup-success", "missing-claim", "successful-body")
+            expected_success = scenario in ("cleanup-success", "missing-claim", "successful-body", "demo-success")
             assert (returncode == 0) == expected_success, result_output
             for call in calls:
                 if call[0] == "kubectl":
@@ -172,7 +183,7 @@ def main():
                 again = subprocess.run(command, cwd=fixture, env=env, capture_output=True, timeout=15)
                 assert again.returncode == 0
                 assert len([c for c in calls_at(log) if c[:3] == ["kind", "delete", "cluster"]]) == 1
-            if not standalone and scenario not in ("existing-cluster", "docker-info"):
+            if not standalone and not scenario.startswith("demo-") and scenario not in ("existing-cluster", "docker-info", "existing-run"):
                 report = (directory / "artifacts" / "result.txt").read_text()
                 assert ("E2E exit code: 0" in report) == (scenario == "successful-body")
             print(f"e2e cleanup: {scenario} PASS (fake CLI)")
@@ -183,10 +194,10 @@ def main():
                 # accepted as a completed application lifecycle suite.
                 assert subprocess.run(gate, cwd=fixture, env=env, capture_output=True).returncode != 0
                 print("report gate: incomplete lifecycle rejected PASS (synthetic report)")
-                checks.write_text("PASS: cluster-isolation: duplicate\n" * 13)
+                checks.write_text("PASS: cluster-isolation: duplicate\n" * 14)
                 assert subprocess.run(gate, cwd=fixture, env=env, capture_output=True).returncode != 0
                 print("report gate: duplicate checks rejected PASS (synthetic report)")
-                names = ("creation owners recreation drift restart http readiness finalizer ttl-active "
+                names = ("creation owners recreation drift restart http ingress readiness finalizer ttl-active "
                          "ttl-downtime manual-delete foreign-resources cluster-isolation").split()
                 checks.write_text("".join(f"PASS: {name}: synthetic fixture\n" for name in names))
                 assert subprocess.run(gate, cwd=fixture, env=env, capture_output=True).returncode == 0

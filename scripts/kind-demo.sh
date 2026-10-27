@@ -7,6 +7,11 @@ for tool in docker kind kubectl; do
 done
 pf_local_docker
 docker info >/dev/null
+if [[ -n ${PREVIEWFORGE_DEMO_HTTP_PORT:-} ]]; then
+  [[ $PREVIEWFORGE_DEMO_HTTP_PORT =~ ^[1-9][0-9]{0,4}$ && $PREVIEWFORGE_DEMO_HTTP_PORT -le 65535 ]] || {
+    echo 'PREVIEWFORGE_DEMO_HTTP_PORT must be a decimal port from 1 to 65535' >&2; exit 1;
+  }
+fi
 cluster=${PREVIEWFORGE_TEST_CLUSTER:-previewforge-test-$(od -An -N4 -tx1 /dev/urandom | tr -d ' \n')}
 export PREVIEWFORGE_TEST_CLUSTER="$cluster"
 export PREVIEWFORGE_RUN_TOKEN=${PREVIEWFORGE_RUN_TOKEN:-$(od -An -N16 -tx1 /dev/urandom | tr -d ' \n')}
@@ -20,7 +25,22 @@ done <<< "$clusters"
 [[ ! -e "$(dirname "$kubeconfig")" ]] || { echo 'Refusing to overwrite an existing run directory' >&2; exit 1; }
 pf_claim_cluster
 printf '%s\n' "$clusters" > "$(dirname "$kubeconfig")/.other-clusters"
-kind create cluster --name "$cluster" --image kindest/node:v1.37.0@sha256:a1ed56cfb0e7b93589bdf97c8cd566405a265939e3620fc4f5de89adff580ae5 --kubeconfig "$kubeconfig" --wait 120s
+kind_args=(--name "$cluster" --image kindest/node:v1.37.0@sha256:a1ed56cfb0e7b93589bdf97c8cd566405a265939e3620fc4f5de89adff580ae5 --kubeconfig "$kubeconfig" --wait 120s)
+if [[ -n ${PREVIEWFORGE_DEMO_HTTP_PORT:-} ]]; then
+  cat > "$(dirname "$kubeconfig")/kind.yaml" <<EOF
+kind: Cluster
+apiVersion: kind.x-k8s.io/v1alpha4
+nodes:
+  - role: control-plane
+    extraPortMappings:
+      - containerPort: 30080
+        hostPort: $PREVIEWFORGE_DEMO_HTTP_PORT
+        listenAddress: "127.0.0.1"
+        protocol: TCP
+EOF
+  kind_args+=(--config "$(dirname "$kubeconfig")/kind.yaml")
+fi
+kind create cluster "${kind_args[@]}"
 cp "$kubeconfig" bin/kind.kubeconfig
 image="previewforge:$cluster"
 overlay=$(dirname "$kubeconfig")

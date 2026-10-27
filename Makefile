@@ -6,7 +6,7 @@ KIND_VERSION := v0.33.0
 IMG ?= previewforge:dev
 LOCALBIN := $(CURDIR)/bin
 
-.PHONY: generate manifests fmt vet test test-race test-integration build run install deploy docker-build kind-demo test-e2e
+.PHONY: generate manifests fmt vet test test-race test-integration build run install deploy docker-build kind-demo ingress-demo test-e2e
 
 $(LOCALBIN):
 	mkdir -p $(LOCALBIN)
@@ -58,6 +58,9 @@ docker-build:
 
 kind-demo: $(LOCALBIN)/kind
 	PATH="$(LOCALBIN):$$PATH" bash scripts/kind-demo.sh
+
+ingress-demo: $(LOCALBIN)/kind
+	PATH="$(LOCALBIN):$$PATH" bash scripts/ingress-demo.sh
 
 test-e2e: $(LOCALBIN)/kind
 	PATH="$(LOCALBIN):$$PATH" bash scripts/e2e.sh

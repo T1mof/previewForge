@@ -1,6 +1,6 @@
 # Roadmap
 
-Обновлено: 2026-10-27. Исходное [ТЗ](SPECIFICATION.md) сохранено без изменений. Этап 1 завершён: локальный kind и GitHub run 40576650171 подтверждены. Проверенный commit, все 13 результатов и cleanup зафиксированы в [отчёт CI](verification/2026-10-27-stage1.md). Следующий шаг — демонстрационный кластер с Ingress, затем PR integration.
+Обновлено: 2026-10-27. Исходное [ТЗ](SPECIFICATION.md) сохранено без изменений. Этап 1 завершён: локальный kind и GitHub run 40576650171 подтверждены. Проверенный commit, все 13 результатов и cleanup зафиксированы в [отчёте CI](verification/2026-10-27-stage1.md). Следующий шаг — демонстрационный кластер с Ingress, затем PR integration.
 
 ## Этап 1 — Рабочий Kubernetes Operator
 
@@ -20,7 +20,7 @@
 - [x] Исправлена потеря Conditions из-за устаревшего cache snapshot; дополнен namespaced RBAC для leader election Event.
 - [x] Скрипты создают только новый локальный previewforge-test-*; тесты границ PowerShell/Bash прошли по 7 сценариев. Image и Kustomize overlay отдельные для каждого запуска.
 - [x] E2e расширен: owners, held finalizer, TTL после downtime, чужой Namespace с поддельными labels и ConfigMap-canary.
-- [x] Подготовлен GitHub Actions workflow этапа 1: hosted Ubuntu, race/envtest, отдельный kind/kubeconfig, диагностика, EXIT/always() cleanup и обязательные 13 результатов сценариев. Это конфигурация; удалённый запуск ещё не подтверждён.
+- [x] Подготовлен GitHub Actions workflow этапа 1: hosted Ubuntu, race/envtest, отдельный kind/kubeconfig, диагностика, EXIT/always() cleanup и обязательные 13 результатов сценариев. Реальный запуск этого исходного набора из 13 check ID подтверждён ниже.
 - [x] Добавлены проверки настоящих Pod/readiness, Service DNS/ClusterIP, активного TTL; cleanup ограничен claim/token/локальным Docker endpoint текущего запуска. Остаточные риски и меры защиты описаны в SECURITY.md.
 - [x] На 2026-10-11: Linux vet/build/race/envtest, Actionlint/ShellCheck, 17 mock cleanup сценариев и 4 синтетических report gate проверки — PASS. Тогда настоящий e2e остановился на Docker preflight; успешный локальный Kubernetes run выполнен позже, 2026-10-27.
 - [x] Выполнен workflow в T1mof/previewForge: run 40576650171, commit 7d0a156, оба job SUCCESS. Скачанный kind artifact проверен по digest, commit, всем 13 check ID и cleanup; см. отчёт этапа 1.
@@ -37,7 +37,10 @@
 - [ ] Расширять CI для PR workflows после закрытия этапа 1; базовый operator e2e workflow уже подготовлен как проверка этапа 1.
 - [ ] Создание окружений из PR, привязка к image build, удаление при закрытии PR.
 - [ ] Определить безопасную модель доступа workflow к кластеру и registry, включая fork PR.
-- [ ] Ingress, домены, URL в status.
+- [x] Необязательный Ingress с host/class/TLS Secret, URL в status, ownership, drift/recreation и безопасное отключение. Linux envtest и локальный e2e 14/14 PASS.
+- [x] Локальный демонстрационный kind с Traefik и настоящим HTTP на http://localhost:8080; cluster previewforge-test-demo-20261027-b оставлен для просмотра.
+- [ ] Подтвердить CI ветки Ingress с новым check ID и отдельным artifact.
+- [ ] Выбрать площадку/домен и подготовить отдельный постоянный demo-кластер для живых PR-ссылок; пользовательский или production кластер не используется.
 - [ ] Политики сетевой изоляции и ограничения доступа к API.
 
 Базовые drift repair, ownership и optimistic locking включены в этап 1, поскольку нужны для корректного reconcile.
