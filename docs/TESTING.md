@@ -1,6 +1,10 @@
 # Проверки
 
-Актуализировано: 2026-10-27. Среда: Windows/amd64, Go 1.26.1; Ubuntu WSL2/Linux amd64, Go 1.26.9 и gcc 13.3. Локальный Kubernetes e2e и GitHub workflow подтверждены; этап 1 завершён.
+Актуализировано: 2026-10-28. Среда: Windows/amd64, Go 1.26.1; Ubuntu WSL2/Linux amd64, Go 1.26.9 и gcc 13.3. Локальный Kubernetes e2e и GitHub workflow подтверждены; этап 1 завершён.
+
+## CI Ingress (2026-10-28)
+
+[Run 40582139866](https://github.com/T1mof/previewForge/actions/runs/40582139866), commit `8082fab040df8ef79b62f19c82f877caf7e1027f`: оба job **SUCCESS**, e2e **14/14**, cleanup/report gate PASS. Скачанный artifact независимо проверен по digest, commit, всем check ID, HTTP и удалению кластера. Linux race 3,852 с; envtest 8,93 с / пакет 9,993 с. [Отчёт с artifact ID и SHA256](verification/2026-10-28-ingress.md).
 
 ## Ingress и локальная демонстрация (2026-10-27)
 
@@ -14,7 +18,7 @@ Demo `previewforge-test-demo-20261027-a` с портом 80: **FAIL** на Docke
 
 ## GitHub CI этапа 1 (2026-10-27)
 
-[Run 40576650171](https://github.com/T1mof/previewForge/actions/runs/40576650171), commit `7d0a1561d5f6b49c2c360907fa14e7be0e9390e7`: оба job **SUCCESS**. Linux race 3,285 с, envtest 7,44 с / пакет 8,501 с под ServiceAccount RBAC; настоящий kind e2e **13/13 PASS**, cleanup и report gate PASS. Скачанный artifact отдельно проверен по digest, commit, двум HTTP-ответам и всем check ID. Подробности — в [отчёт CI](verification/2026-10-27-stage1.md).
+[Run 40576650171](https://github.com/T1mof/previewForge/actions/runs/40576650171), commit `7d0a1561d5f6b49c2c360907fa14e7be0e9390e7`: оба job **SUCCESS**. Linux race 3,285 с, envtest 7,44 с / пакет 8,501 с под ServiceAccount RBAC; настоящий kind e2e **13/13 PASS**, cleanup и report gate PASS. Скачанный artifact отдельно проверен по digest, commit, двум HTTP-ответам и всем check ID. Подробности — в [отчёте CI](verification/2026-10-27-stage1.md).
 
 Перед публикацией с новым module path Windows Generate/gofmt/vet/test/build/Kustomize и Linux vet/build/race/envtest также прошли; локальный race 2,882 с, envtest 15,80 с / пакет 17,037 с.
 
