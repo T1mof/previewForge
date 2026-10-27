@@ -1,0 +1,167 @@
+name: Preview pull request
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened, closed]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: preview-${{ github.repository_id }}-${{ github.event.pull_request.number }}
+  cancel-in-progress: false
+
+defaults:
+  run:
+    shell: bash
+
+jobs:
+  build:
+    if: >-
+      vars.PREVIEWFORGE_PR_ENABLED == 'true' &&
+      github.event.action != 'closed' &&
+      github.event.pull_request.head.repo.full_name == github.repository &&
+      contains(fromJSON('["OWNER","MEMBER","COLLABORATOR"]'), github.event.pull_request.author_association)
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    permissions:
+      contents: read
+      packages: write
+    outputs:
+      image: ${{ steps.image.outputs.image }}
+      revision: ${{ steps.image.outputs.revision }}
+    steps:
+      - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+          persist-credentials: false
+      - name: Build and publish the example application by digest
+        id: image
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          PR_SHA: ${{ github.event.pull_request.head.sha }}
+        run: |
+          [[ "$PR_SHA" =~ ^[a-f0-9]{40}$|^[a-f0-9]{64}$ ]] || exit 1
+          image="ghcr.io/${GITHUB_REPOSITORY,,}-preview-app"
+          printf '%s' "$GH_TOKEN" | docker login ghcr.io --username "$GITHUB_ACTOR" --password-stdin
+          trap 'docker logout ghcr.io >/dev/null 2>&1 || true' EXIT
+          docker buildx build --platform linux/amd64 --push \
+            --file examples/hello/Dockerfile \
+            --build-arg "REVISION=$PR_SHA" \
+            --label "org.opencontainers.image.source=https://github.com/$GITHUB_REPOSITORY" \
+            --tag "$image:$PR_SHA" --metadata-file "$RUNNER_TEMP/image.json" .
+          digest=$(python3 -c 'import json, os; print(json.load(open(os.environ["RUNNER_TEMP"] + "/image.json"))["containerimage.digest"])')
+          [[ "$digest" =~ ^sha256:[a-f0-9]{64}$ ]] || exit 1
+          docker logout ghcr.io >/dev/null
+          if ! docker buildx imagetools inspect "$image@$digest" >/dev/null; then
+            echo 'The demo GHCR package must allow anonymous pulls before deployment; configure package visibility and rerun' >&2
+            exit 1
+          fi
+          printf 'image=%s@%s\nrevision=%s\n' "$image" "$digest" "$PR_SHA" >> "$GITHUB_OUTPUT"
+
+  deploy:
+    needs: build
+    if: >-
+      always() &&
+      vars.PREVIEWFORGE_PR_ENABLED == 'true' &&
+      github.event.pull_request.head.repo.full_name == github.repository &&
+      contains(fromJSON('["OWNER","MEMBER","COLLABORATOR"]'), github.event.pull_request.author_association) &&
+      (github.event.action == 'closed' || needs.build.result == 'success')
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    environment:
+      name: preview
+      url: ${{ steps.apply.outputs.url }}
+    permissions:
+      contents: read
+      pull-requests: read
+    steps:
+      # Cluster credentials are used only with tooling from the trusted base commit.
+      - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3
+        with:
+          ref: ${{ github.event.pull_request.base.sha }}
+          persist-credentials: false
+      - name: Recheck live PR state and head
+        id: decision
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          PREVIEWFORGE_BASE_DOMAIN: ${{ vars.PREVIEWFORGE_BASE_DOMAIN }}
+        run: python3 .github/scripts/pr-event.py
+      - uses: actions/setup-go@4dc6199c7b1a012772edbd06daecab0f50c9053c # v6.1.0
+        if: steps.decision.outputs.action != 'skip'
+        with:
+          go-version: '1.26.9'
+          cache: false
+      - name: Build trusted deployment CLI
+        if: steps.decision.outputs.action != 'skip'
+        run: |
+          export GOMODCACHE="$PWD/.cache/gomod"
+          export GOCACHE="$PWD/.cache/linux/go-build"
+          mkdir -p bin
+          go build -trimpath -o bin/previewctl ./cmd/previewctl
+      - name: Apply or delete only the source-owned PR environment
+        id: apply
+        if: steps.decision.outputs.action != 'skip'
+        env:
+          PREVIEWFORGE_KUBECONFIG: ${{ secrets.PREVIEWFORGE_KUBECONFIG }}
+          KUBE_CONTEXT: ${{ vars.PREVIEWFORGE_KUBE_CONTEXT }}
+          SOURCE_UID: ${{ vars.PREVIEWFORGE_SOURCE_UID }}
+          INGRESS_CLASS: ${{ vars.PREVIEWFORGE_INGRESS_CLASS }}
+          TLS_SECRET: ${{ vars.PREVIEWFORGE_TLS_SECRET }}
+          TTL_SECONDS: ${{ vars.PREVIEWFORGE_TTL_SECONDS || '3600' }}
+          OPERATION: ${{ steps.decision.outputs.action }}
+          PR_NUMBER: ${{ steps.decision.outputs.pr_number }}
+          HEAD_SHA: ${{ steps.decision.outputs.head_sha }}
+          PREVIEW_HOST: ${{ steps.decision.outputs.host }}
+          BUILD_IMAGE: ${{ needs.build.outputs.image }}
+          BUILD_REVISION: ${{ needs.build.outputs.revision }}
+        run: |
+          [[ -n "$PREVIEWFORGE_KUBECONFIG" && -n "$KUBE_CONTEXT" && -n "$SOURCE_UID" ]] || {
+            echo 'Configure the dedicated preview environment, kubeconfig/context and source UID first' >&2; exit 1;
+          }
+          umask 077
+          task_config="$RUNNER_TEMP/previewforge-kubeconfig"
+          trap 'rm -f -- "$task_config"' EXIT
+          printf '%s\n' "$PREVIEWFORGE_KUBECONFIG" > "$task_config"
+          common=(--kubeconfig "$task_config" --context "$KUBE_CONTEXT" --source-uid "$SOURCE_UID" \
+            --repository-id "$GITHUB_REPOSITORY_ID" --pr-number "$PR_NUMBER" --wait --timeout 5m)
+          if [[ "$OPERATION" == delete ]]; then
+            bin/previewctl delete "${common[@]}"
+            exit 0
+          fi
+          [[ "$OPERATION" == deploy && "$BUILD_REVISION" == "$HEAD_SHA" && -n "$INGRESS_CLASS" ]] || exit 1
+          extra=()
+          if [[ -n "$TLS_SECRET" ]]; then extra+=(--tls-secret "$TLS_SECRET"); fi
+          bin/previewctl apply "${common[@]}" --image "$BUILD_IMAGE" --revision "$HEAD_SHA" \
+            --host "$PREVIEW_HOST" --ingress-class "$INGRESS_CLASS" --port 8080 --ttl-seconds "$TTL_SECONDS" \
+            "${extra[@]}" > "$RUNNER_TEMP/preview-result.json"
+          python3 - <<'PY'
+          import json, os
+          from pathlib import Path
+          result = json.loads((Path(os.environ['RUNNER_TEMP']) / 'preview-result.json').read_text())
+          scheme = 'https' if os.environ['TLS_SECRET'] else 'http'
+          expected = scheme + '://' + os.environ['PREVIEW_HOST']
+          if result['url'] != expected:
+              raise SystemExit('Refusing an unexpected preview URL')
+          with open(os.environ['GITHUB_OUTPUT'], 'a') as output:
+              output.write('url=' + expected + '\n')
+          PY
+      - name: Verify preview HTTP from the runner
+        if: steps.decision.outputs.action == 'deploy'
+        env:
+          PREVIEW_URL: ${{ steps.apply.outputs.url }}
+          EXPECTED_REVISION: ${{ steps.decision.outputs.head_sha }}
+        run: |
+          code=$(curl --fail --silent --show-error --retry 20 --retry-all-errors --retry-delay 3 \
+            --connect-timeout 5 --max-time 10 --output "$RUNNER_TEMP/preview-health.txt" \
+            --write-out '%{http_code}' "$PREVIEW_URL/healthz")
+          [[ "$code" == 200 ]] && grep -qx 'ok' "$RUNNER_TEMP/preview-health.txt"
+          curl --fail --silent --show-error --connect-timeout 5 --max-time 10 \
+            "$PREVIEW_URL/" --output "$RUNNER_TEMP/preview-response.json"
+          python3 - <<'PY'
+          import json, os
+          from pathlib import Path
+          body = json.loads((Path(os.environ['RUNNER_TEMP']) / 'preview-response.json').read_text())
+          if body.get('revision') != os.environ['EXPECTED_REVISION']:
+              raise SystemExit('The route did not return the expected PR revision')
+          PY

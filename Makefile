@@ -25,9 +25,10 @@ generate: $(LOCALBIN)/controller-gen
 
 manifests: generate
 	$(LOCALBIN)/controller-gen crd rbac:roleName=previewforge-manager-role 'paths=./api/v1alpha1;./internal/controller' output:crd:artifacts:config=config/crd/bases output:rbac:artifacts:config=config/rbac
+	$(LOCALBIN)/controller-gen rbac:roleName=previewforge-pr-deployer-role paths=./internal/prenvironment output:rbac:artifacts:config=config/pr-deployer
 
 fmt:
-	gofmt -w api cmd internal
+	gofmt -w api cmd internal examples
 
 vet:
 	go vet ./...
@@ -43,6 +44,7 @@ test-integration: $(LOCALBIN)/setup-envtest
 
 build: | $(LOCALBIN)
 	go build -trimpath -o $(LOCALBIN)/manager ./cmd/manager
+	go build -trimpath -o $(LOCALBIN)/previewctl ./cmd/previewctl
 
 run:
 	go run ./cmd/manager
@@ -62,5 +64,5 @@ kind-demo: $(LOCALBIN)/kind
 ingress-demo: $(LOCALBIN)/kind
 	PATH="$(LOCALBIN):$$PATH" bash scripts/ingress-demo.sh
 
-test-e2e: $(LOCALBIN)/kind
+test-e2e: $(LOCALBIN)/kind build
 	PATH="$(LOCALBIN):$$PATH" bash scripts/e2e.sh

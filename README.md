@@ -31,6 +31,7 @@ flowchart LR
 - TTL от времени создания CR и finalizer, ожидающий фактического удаления Namespace.
 - Watch дочерних ресурсов, четыре reconcile worker, optimistic locking, leader election в Deployment оператора.
 - Unit-тесты, envtest suite для Linux/macOS и сценарий e2e в выделенном kind-кластере.
+- CLI `previewctl`, отдельный deployer RBAC, example Go HTTP server и выключенный PR workflow: immutable image, актуальный head, update/close и проверка владельца по UID. [Подготовка отдельного кластера](docs/PR-INTEGRATION.md); размещение и внешний PR lifecycle будут проверены позже.
 
 Namespace обеспечивает разделение ресурсов и удаление окружения целиком. Сетевая изоляция между Namespace ещё не реализована: для неё необходимы NetworkPolicy и совместимый CNI. По умолчанию приложение доступно внутри кластера; внешний HTTP(S) включается через необязательный Ingress. API, URL и локальный demo описаны в [INGRESS.md](docs/INGRESS.md).
 
@@ -41,7 +42,10 @@ Go 1.26+, controller-runtime 0.25.2, `k8s.io/*` 0.37.0, controller-gen 0.22.0. D
 ```text
 api/v1alpha1/       CRD types и сгенерированный DeepCopy
 cmd/manager/       entrypoint, manager, сигналы и health probes
+cmd/previewctl/    apply/get/delete PR окружений через явный kubeconfig/context
 internal/controller/ reconcile, ресурсы, тесты
+internal/prenvironment/ PR binding, optimistic apply и UID/RV delete
+examples/hello/    пример приложения с revision и health endpoint
 config/            сгенерированные CRD/RBAC, Deployment и пример CR
 scripts/           проверки Windows, kind demo и e2e
 docs/              ТЗ, архитектура, решения, roadmap и результаты проверок

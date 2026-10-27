@@ -49,6 +49,7 @@ func TestEnvtest(t *testing.T) {
 		t.Fatal(err)
 	}
 	verifyEnvtestSafety(t, ctx, c, operatorClient, scheme)
+	verifyEnvtestPRSource(t, environment, c, scheme)
 
 	t.Run("schema and defaults", func(t *testing.T) {
 		bad := &platformv1.PreviewEnvironment{ObjectMeta: metav1.ObjectMeta{Name: "invalid"}, Spec: platformv1.PreviewEnvironmentSpec{Image: "nginx", Replicas: int32Ptr(0)}}

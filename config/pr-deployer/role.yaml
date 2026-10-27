@@ -1,0 +1,23 @@
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: previewforge-pr-deployer-role
+rules:
+- apiGroups:
+  - ""
+  resourceNames:
+  - previewforge-pr-source
+  resources:
+  - namespaces
+  verbs:
+  - get
+- apiGroups:
+  - platform.previewforge.dev
+  resources:
+  - previewenvironments
+  verbs:
+  - create
+  - delete
+  - get
+  - patch

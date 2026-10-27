@@ -8,6 +8,7 @@ import (
 	"io"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 	"time"
 
@@ -98,8 +99,9 @@ func envtestOperatorConfig(t *testing.T, env *envtest.Environment, admin client.
 			{"rbac.authorization.k8s.io", "clusterroles", "create", "", false},
 		} {
 			eventually(t, func() error {
+				resource, subresource, _ := strings.Cut(check.resource, "/")
 				review := &authorizationv1.SelfSubjectAccessReview{Spec: authorizationv1.SelfSubjectAccessReviewSpec{ResourceAttributes: &authorizationv1.ResourceAttributes{
-					Group: check.group, Resource: check.resource, Verb: check.verb, Namespace: check.namespace,
+					Group: check.group, Resource: resource, Subresource: subresource, Verb: check.verb, Namespace: check.namespace,
 				}}}
 				if err := op.Create(ctx, review); err != nil {
 					return err

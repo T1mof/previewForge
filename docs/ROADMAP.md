@@ -1,6 +1,6 @@
 # Roadmap
 
-Обновлено: 2026-10-28. Исходное [ТЗ](SPECIFICATION.md) сохранено без изменений. Этап 1 завершён: локальный kind и GitHub run 40576650171 подтверждены. Проверенный commit, все 13 результатов и cleanup зафиксированы в [отчёте CI](verification/2026-10-27-stage1.md). Следующий шаг — демонстрационный кластер с Ingress, затем PR integration.
+Обновлено: 2026-10-28. Исходное [ТЗ](SPECIFICATION.md) сохранено без изменений. Этап 1 завершён: локальный kind и GitHub run 40576650171 подтверждены. Проверенный commit, все 13 результатов и cleanup зафиксированы в [отчёте CI](verification/2026-10-27-stage1.md). Ingress/demo также подтверждены; подготовлена выключенная PR-интеграция для будущего отдельного кластера.
 
 ## Этап 1 — Рабочий Kubernetes Operator
 
@@ -29,18 +29,19 @@
 - [x] Исправлена колонка EXPIRES: абсолютный RFC3339 deadline вместо `<invalid>` для будущей даты; CRD перегенерирована controller-gen 0.22.0.
 - [x] После исправления: Windows Generate/gofmt/vet/test/build/Kustomize и Linux vet/build/race/envtest — PASS. Итоговый новый kind-кластер c: 13/13 PASS, report gate и cleanup PASS. Промежуточный отказ API server в кластере b записан отдельно; cleanup при этой ошибке также подтверждён.
 
-Воспроизведение: `scripts/check.ps1` для Windows; `wsl --distribution Ubuntu --exec bash /mnt/e/PreviewForge/scripts/linux-checks.sh` для race/envtest. Полный локальный e2e подтверждён 2026-10-27 через Git Bash, без изменения настроек WSL Integration. Итоговые отчёты находятся в `bin/runs/previewforge-test-local-20261027-c/artifacts/`; кластер удалён. Первый опубликованный commit 7d0a156 подтверждён GitHub Linux/kind job; artifact и cleanup проверены независимо. Точные команды и запуск CI — в [VERIFICATION.md](VERIFICATION.md), реальные результаты — в [TESTING.md](TESTING.md), меры защиты — в [SECURITY.md](SECURITY.md). После CI следующий шаг — демонстрационный кластер с Ingress; PR integration следует за ним.
+Воспроизведение: `scripts/check.ps1` для Windows; `wsl --distribution Ubuntu --exec bash /mnt/e/PreviewForge/scripts/linux-checks.sh` для race/envtest. Полный локальный e2e подтверждён 2026-10-27 через Git Bash, без изменения настроек WSL Integration. Итоговые отчёты находятся в `bin/runs/previewforge-test-local-20261027-c/artifacts/`; кластер удалён. Первый опубликованный commit 7d0a156 подтверждён GitHub Linux/kind job; artifact и cleanup проверены независимо. Точные команды и запуск CI — в [VERIFICATION.md](VERIFICATION.md), реальные результаты — в [TESTING.md](TESTING.md), меры защиты — в [SECURITY.md](SECURITY.md). Ingress/demo подтверждены отдельно; PR-интеграция подготовлена без внешней активации.
 
 ## Этап 2 — Надёжность и PR integration
 
 - [ ] Расширить fault/concurrency tests: stale cache, API outage, конфликт spec/status/delete, смена лидера.
-- [ ] Расширять CI для PR workflows после закрытия этапа 1; базовый operator e2e workflow уже подготовлен как проверка этапа 1.
+- [x] Подготовлен выключенный PR workflow: same-repository trusted PR, image digest, base tooling, повторная проверка live head/state, per-PR concurrency. Внешняя активация отложена.
 - [ ] Создание окружений из PR, привязка к image build, удаление при закрытии PR.
-- [ ] Определить безопасную модель доступа workflow к кластеру и registry, включая fork PR.
+- [x] Определена модель доступа: отдельный кластер, ограниченный deployer SA, source Namespace UID; fork PR пропускаются, build не получает кластерный Environment Secret. OIDC зависит от выбранной площадки.
 - [x] Необязательный Ingress с host/class/TLS Secret, URL в status, ownership, drift/recreation и безопасное отключение. Linux envtest и локальный e2e 14/14 PASS.
-- [x] Локальный демонстрационный kind с Traefik и настоящим HTTP на http://localhost:8080; cluster previewforge-test-demo-20261027-b оставлен для просмотра.
+- [x] Локальный демонстрационный kind с Traefik и настоящим HTTP на http://localhost:8080; приложение demo b затем удалено по часовому TTL (CR и Namespace NotFound).
 - [x] CI Ingress подтверждён: run 40582139866, commit 8082fab, оба job SUCCESS, 14/14 e2e, cleanup и скачанный artifact проверены; [отчёт](verification/2026-10-28-ingress.md).
-- [ ] Подготовить выключенную по умолчанию PR-интеграцию для отдельного кластера. По решению пользователя площадка/домен и включение живых PR-ссылок выбираются позже; пользовательский или production кластер не используется.
+- [x] Подготовлена выключенная по умолчанию PR-интеграция, CLI и установочные RBAC manifests. [Инструкция](PR-INTEGRATION.md). Площадка/домен и включение живых PR-ссылок выбираются позже; пользовательский или production кластер не используется.
+- [ ] После выбора площадки: активировать workflow и подтвердить настоящий GitHub PR create/update/HTTP/close. Fixture metadata в локальном kind этот пункт не закрывает.
 - [ ] Политики сетевой изоляции и ограничения доступа к API.
 
 Базовые drift repair, ownership и optimistic locking включены в этап 1, поскольку нужны для корректного reconcile.

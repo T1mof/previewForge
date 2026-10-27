@@ -62,7 +62,7 @@ python3 scripts/test-e2e-cleanup.py
 
 Текущий harness выполняет 21 сценарий cleanup/demo с fake CLI и 4 проверки синтетического отчёта; Bash isolation проверяет 9 случаев, Windows — 7. Это регрессии защиты скриптов, а не приложение в Kubernetes. Они прошли 2026-10-27 вместе с Actionlint 1.7.12 и ShellCheck 0.9.0.
 
-Envtest запускает менеджер под идентичностью ServiceAccount из поставляемого RBAC. Проверяются positive/negative SelfSubjectAccessReview, leader election, status subresource, HTTP 409 при конфликте Status/TTL Delete, UID precondition и отказ удаления чужого Namespace. Ready моделируется записью Deployment status: Deployment controller/kubelet/GC в envtest отсутствуют.
+Envtest запускает менеджер под идентичностью ServiceAccount из поставляемого RBAC; отдельно проверяет ограниченный PR deployer SA. Проверяются positive/negative SelfSubjectAccessReview, leader election, status subresource, HTTP 409 при конфликте Status/TTL Delete, UID precondition и отказ удаления чужого Namespace. Ready моделируется записью Deployment status: Deployment controller/kubelet/GC в envtest отсутствуют.
 
 ## Настоящий Kubernetes: Docker Desktop и kind
 
@@ -82,6 +82,7 @@ export GOCACHE="$(cygpath -w "$PWD/.cache/go-build")"
 export GOBIN="$(cygpath -w "$PWD/bin")"
 export PATH="$PWD/bin:$PATH"
 go install sigs.k8s.io/kind@v0.33.0
+go build -trimpath -o bin/previewctl.exe ./cmd/previewctl
 export PREVIEWFORGE_TEST_CLUSTER="previewforge-test-$(od -An -N4 -tx1 /dev/urandom | tr -d ' \n')"
 export PREVIEWFORGE_RUN_TOKEN="$(od -An -N16 -tx1 /dev/urandom | tr -d ' \n')"
 mkdir -p bin/ci
@@ -151,7 +152,7 @@ Workflow: [operator-e2e.yml](../.github/workflows/operator-e2e.yml). Сраба�
 
 Оба job запускаются на GitHub-hosted `ubuntu-24.04` с Go 1.26.9. Первый выполняет vet/build/race/envtest под RBAC оператора и регрессии скриптов. Второй устанавливает kind 0.33.0 и kubectl 1.37.0 с проверкой checksum, создаёт новый `previewforge-test-ci-<run_id>-<attempt>` с отдельным kubeconfig, собирает и загружает отдельный image и запускает `scripts/e2e.sh`. Pipeline с `tee` сохраняет исходный exit code через Bash pipefail.
 
-Очистка: ранний EXIT/INT/TERM trap плюс отдельный `always()` шаг. Удаление разрешается только с claim/token текущего запуска и неизменным локальным Docker endpoint; при preflight отказе использовать существующий кластер claim не появляется и cleanup ничего не удаляет. Затем CI требует нулевые коды e2e/cleanup, все 14 различных check IDs (исходный этап 1 содержал 13, Ingress добавил ещё один) и `cleanup.txt` с подтверждённым отсутствием кластера. Diagnostics загружаются даже при ошибке; kubeconfig, token claim и credentials не входят в artifact paths. SIGKILL/потеря runner может помешать cleanup-скрипту; GitHub-hosted VM одноразовая, self-hosted runner здесь не используется.
+Очистка: ранний EXIT/INT/TERM trap плюс отдельный `always()` шаг. Удаление разрешается только с claim/token текущего запуска и неизменным локальным Docker endpoint; при preflight отказе использовать существующий кластер claim не появляется и cleanup ничего не удаляет. Затем CI требует нулевые коды e2e/cleanup, все 15 различных check IDs (этап 1: 13, Ingress: ещё один, PR-компоненты: ещё один) и `cleanup.txt` с подтверждённым отсутствием кластера. Diagnostics загружаются даже при ошибке; kubeconfig, token claim и credentials не входят в artifact paths. SIGKILL/потеря runner может помешать cleanup-скрипту; GitHub-hosted VM одноразовая, self-hosted runner здесь не используется.
 
 Как запустить:
 

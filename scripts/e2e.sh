@@ -6,6 +6,8 @@ source scripts/kind-lifecycle.sh
 export PREVIEWFORGE_TEST_CLUSTER=${PREVIEWFORGE_TEST_CLUSTER:-previewforge-test-$(od -An -N4 -tx1 /dev/urandom | tr -d ' \n')}
 export PREVIEWFORGE_RUN_TOKEN=${PREVIEWFORGE_RUN_TOKEN:-$(od -An -N16 -tx1 /dev/urandom | tr -d ' \n')}
 pf_validate_cluster
+previewctl=${PREVIEWFORGE_PREVIEWCTL:-previewctl}
+command -v "$previewctl" >/dev/null || { echo 'Build previewctl first (make build or scripts/check.ps1)' >&2; exit 1; }
 context="kind-$PREVIEWFORGE_TEST_CLUSTER"
 kubeconfig="$PWD/bin/runs/$PREVIEWFORGE_TEST_CLUSTER/kubeconfig"
 directory=$(pf_run_directory)
@@ -140,6 +142,7 @@ record_check http 'real smoke Pod received application HTTP through Service DNS 
 
 # Optional API exposure is tested with a real Ingress controller in this run only.
 source scripts/e2e-ingress.sh
+source scripts/e2e-pr.sh
 
 create_preview() {
   local name=$1 ttl=$2 port=${3:-80}

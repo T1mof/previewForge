@@ -75,3 +75,9 @@ GitHub run 40576650171 для commit 7d0a156 завершил оба job усп�
 После успешной приёмки CI этапа 1 добавлен стандартный networking/v1 Ingress с явным классом и точным host. URL описывает настроенный маршрут; Ready не подменяет проверку DNS/TLS/внешнего HTTP. Отключение удаляет только принадлежащий CR Ingress с UID/RV preconditions и свежим APIReader; чужой маршрут остаётся нетронутым.
 
 Реальная маршрутизация проверена отдельным Traefik 3.7.16 в свежем kind: e2e 14/14 с cleanup. Сохраняемое demo проверяет HTTP с хоста и использует loopback 8080; Windows реально отказала bind порта 80, неуспешный кластер удалён. Настройки ОС и пользовательский kubeconfig не изменялись. Для CI и demo добавлен ранний отказ от прежнего run directory до установки cleanup traps.
+
+## 2026-10-28 — PR-интеграция для будущего отдельного кластера
+
+Пользователь выбрал подготовку интеграции с выбором площадки позже. PR workflow выключен repository variable gate; внешний kubeconfig, домен и registry visibility не настраиваются автоматически. Build получает только packages write и не использует кластерный Environment Secret. Deploy использует base commit, повторно читает live PR state/head, пропускает forks и устаревшие события. Образ закреплён digest; успешный deploy дополнительно проверяет HTTP revision.
+
+CLI связывает каждую операцию с явно указанными context/kubeconfig и UID source Namespace. Controller owner reference с точным UID разрешает управление CR; labels остаются диагностикой. Delete после conflict повторяется только для той же UID, patch использует optimistic locking. TTL от creationTimestamp сохраняется при update. RBAC не обеспечивает owner-level authorization, поэтому deployer рассчитан на отдельный demo-кластер; этот предел описан явно. Подробнее — [PR-INTEGRATION.md](PR-INTEGRATION.md).

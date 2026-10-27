@@ -2,6 +2,14 @@
 
 Актуализировано: 2026-10-28. Среда: Windows/amd64, Go 1.26.1; Ubuntu WSL2/Linux amd64, Go 1.26.9 и gcc 13.3. Локальный Kubernetes e2e и GitHub workflow подтверждены; этап 1 завершён.
 
+## Подготовка PR-интеграции (2026-10-28)
+
+Windows: controller-gen 0.22.0 (отдельная deployer роль), gofmt, vet, `go test ./...`, сборка CLI и Kustomize operator/deployer — **PASS**. Linux: vet/build — **PASS**, race example 1,061 с, controller 3,426 с, prenvironment 1,950 с; envtest 16,90 с / пакет 18,135 с — **PASS**. Envtest использовал настоящий RBAC deployer SA, проверил разрешённые/запрещённые операции, owner Namespace UID без finalizer permission, optimistic update и настоящий HTTP 409 при замене CR перед Delete; повтор не удалил замену.
+
+Metadata helper: 8 unit-сценариев — **PASS** (актуальный head, устаревший build/close, fork, доверие, неверные repo/SHA/domain). Bash isolation 9/9, cleanup/demo 21/21, synthetic report gate 4/4 — **PASS**; это fake CLI, не Kubernetes. Итоговые Actionlint/ShellCheck — **PASS**. Внешний PR workflow **NOT RUN**, выключен по умолчанию согласно решению о выборе площадки позже.
+
+Первый настоящий локальный PR e2e `previewforge-test-pr-20261028-a`: **FAIL** при разборе image digest после успешного Ingress. Containerd присвоил repository `import-*`; проверка ошибочно ожидала исходное Docker имя. **Cleanup PASS**. Повтор b: **FAIL** по timeout rollout, служебный repoDigest не разрешается kubelet локально; **cleanup PASS**. Итоговый скрипт получает OCI target digest точного загруженного tag из containerd и регистрирует явную `repository@sha256` ссылку; config ID не используется как manifest digest.
+
 ## CI Ingress (2026-10-28)
 
 [Run 40582139866](https://github.com/T1mof/previewForge/actions/runs/40582139866), commit `8082fab040df8ef79b62f19c82f877caf7e1027f`: оба job **SUCCESS**, e2e **14/14**, cleanup/report gate PASS. Скачанный artifact независимо проверен по digest, commit, всем check ID, HTTP и удалению кластера. Linux race 3,852 с; envtest 8,93 с / пакет 9,993 с. [Отчёт с artifact ID и SHA256](verification/2026-10-28-ingress.md).

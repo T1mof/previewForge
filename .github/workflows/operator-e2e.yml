@@ -40,11 +40,12 @@ jobs:
           export GOCACHE="$PWD/.cache/linux/go-build"
           export GOBIN="$PWD/bin/linux"
           go install github.com/rhysd/actionlint/cmd/actionlint@v1.7.12
-          bin/linux/actionlint .github/workflows/operator-e2e.yml
-          shellcheck -x scripts/kind-demo.sh scripts/ingress-demo.sh scripts/kind-lifecycle.sh scripts/cleanup-kind.sh scripts/e2e.sh scripts/e2e-ingress.sh scripts/verify-e2e-result.sh
+          bin/linux/actionlint .github/workflows/operator-e2e.yml .github/workflows/preview-pr.yml
+          python3 .github/scripts/test_pr_event.py
+          shellcheck -x scripts/kind-demo.sh scripts/ingress-demo.sh scripts/kind-lifecycle.sh scripts/cleanup-kind.sh scripts/e2e.sh scripts/e2e-ingress.sh scripts/e2e-pr.sh scripts/verify-e2e-result.sh
           python3 scripts/test-kind-scripts.py
           python3 scripts/test-e2e-cleanup.py
-          bash -n scripts/kind-demo.sh scripts/ingress-demo.sh scripts/kind-lifecycle.sh scripts/cleanup-kind.sh scripts/e2e.sh scripts/e2e-ingress.sh scripts/verify-e2e-result.sh
+          bash -n scripts/kind-demo.sh scripts/ingress-demo.sh scripts/kind-lifecycle.sh scripts/cleanup-kind.sh scripts/e2e.sh scripts/e2e-ingress.sh scripts/e2e-pr.sh scripts/verify-e2e-result.sh
       - name: Upload verification log
         if: always()
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
@@ -80,7 +81,11 @@ jobs:
           printf '%s/bin/linux\n' "$PWD" >> "$GITHUB_PATH"
       - name: Install pinned kind and kubectl
         run: |
+          export GOPATH="$PWD/.cache/linux/gopath"
+          export GOMODCACHE="$PWD/.cache/gomod"
+          export GOCACHE="$PWD/.cache/linux/go-build"
           GOBIN="$PWD/bin/linux" go install sigs.k8s.io/kind@v0.33.0
+          go build -trimpath -o bin/linux/previewctl ./cmd/previewctl
           curl --fail --location --retry 3 -o bin/linux/kubectl https://dl.k8s.io/release/v1.37.0/bin/linux/amd64/kubectl
           checksum=$(curl --fail --location --retry 3 https://dl.k8s.io/release/v1.37.0/bin/linux/amd64/kubectl.sha256)
           printf '%s  bin/linux/kubectl\n' "$checksum" | sha256sum --check
