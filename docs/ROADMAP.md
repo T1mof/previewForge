@@ -1,0 +1,53 @@
+# Roadmap
+
+Обновлено: 2026-10-27. Исходное [ТЗ](SPECIFICATION.md) сохранено без изменений. Локальная приёмка этапа 1 в настоящем kind подтверждена; остаётся запуск подготовленного CI в целевом GitHub-репозитории. Этап 2 не начат.
+
+## Этап 1 — Рабочий Kubernetes Operator
+
+- [x] Go module, Kubebuilder v4 layout, PROJECT, manager и Dockerfile.
+- [x] Cluster-scoped PreviewEnvironment CRD, defaults, validation, status subresource.
+- [x] Создание Namespace → Deployment → Service.
+- [x] Reconcile управляемых полей и восстановление отсутствующих ресурсов.
+- [x] Проверка владения и отказ при коллизиях.
+- [x] Ready по актуальному rollout, пять фаз и диагностические Conditions.
+- [x] TTL, Delete preconditions, cleanup finalizer.
+- [x] Модульные тесты lifecycle, ownership, ошибок API и нескольких CR.
+- [x] Локальные unit-тесты, vet, сборка Windows manager, рендер Kustomize.
+- [x] Компиляция manager и envtest suite для Linux/amd64; проверка синтаксиса Bash-скриптов.
+- [x] Выполнен race detector в Ubuntu WSL2, Go 1.26.9/gcc 13.3; PASS.
+- [x] Выполнен envtest Kubernetes 1.37.0 под race detector в WSL2; PASS. Manager использует ServiceAccount RBAC и leader election.
+- [x] Добавлены проверки Status conflict/Conditions, concurrent TTL extension, UID Delete precondition, чужих владельцев и сохранения finalizers при API outage.
+- [x] Исправлена потеря Conditions из-за устаревшего cache snapshot; дополнен namespaced RBAC для leader election Event.
+- [x] Скрипты создают только новый локальный previewforge-test-*; тесты границ PowerShell/Bash прошли по 7 сценариев. Image и Kustomize overlay отдельные для каждого запуска.
+- [x] E2e расширен: owners, held finalizer, TTL после downtime, чужой Namespace с поддельными labels и ConfigMap-canary.
+- [x] Подготовлен GitHub Actions workflow этапа 1: hosted Ubuntu, race/envtest, отдельный kind/kubeconfig, диагностика, EXIT/always() cleanup и обязательные 13 результатов сценариев. Это конфигурация; удалённый запуск ещё не подтверждён.
+- [x] Добавлены проверки настоящих Pod/readiness, Service DNS/ClusterIP, активного TTL; cleanup ограничен claim/token/локальным Docker endpoint текущего запуска. Остаточные риски и меры защиты описаны в SECURITY.md.
+- [x] На 2026-10-11: Linux vet/build/race/envtest, Actionlint/ShellCheck, 17 mock cleanup сценариев и 4 синтетических report gate проверки — PASS. Тогда настоящий e2e остановился на Docker preflight; успешный локальный Kubernetes run выполнен позже, 2026-10-27.
+- [ ] Выполнить workflow в [T1mof/previewForge](https://github.com/T1mof/previewForge) и записать URL run, commit SHA, итог Kubernetes job и cleanup artifact. Пользователь выбрал репозиторий 2026-10-27; доступ для push проверен.
+- [x] Собран Docker image; штатный Bash kind demo/e2e выполнен через Git Bash с локальным Docker Desktop. Все 13 проверок — PASS, cleanup тестового кластера подтверждён.
+- [x] Подтверждены реальные Pod/readiness, HTTP через Service DNS/ClusterIP, рестарт, TTL при работе/простое, finalizer до исчезновения Namespace и отказ изменения чужих ресурсов.
+- [x] Исправлена колонка EXPIRES: абсолютный RFC3339 deadline вместо `<invalid>` для будущей даты; CRD перегенерирована controller-gen 0.22.0.
+- [x] После исправления: Windows Generate/gofmt/vet/test/build/Kustomize и Linux vet/build/race/envtest — PASS. Итоговый новый kind-кластер c: 13/13 PASS, report gate и cleanup PASS. Промежуточный отказ API server в кластере b записан отдельно; cleanup при этой ошибке также подтверждён.
+
+Воспроизведение: `scripts/check.ps1` для Windows; `wsl --distribution Ubuntu --exec bash /mnt/e/PreviewForge/scripts/linux-checks.sh` для race/envtest. Полный локальный e2e подтверждён 2026-10-27 через Git Bash, без изменения настроек WSL Integration. Итоговые отчёты находятся в `bin/runs/previewforge-test-local-20261027-c/artifacts/`; кластер удалён. Для GitHub CI выбран T1mof/previewForge; первый опубликованный commit должен получить подтверждение Linux/kind job. Точные команды и запуск CI — в [VERIFICATION.md](VERIFICATION.md), реальные результаты — в [TESTING.md](TESTING.md), меры защиты — в [SECURITY.md](SECURITY.md). После CI следующий шаг — демонстрационный кластер с Ingress; PR integration следует за ним.
+
+## Этап 2 — Надёжность и PR integration
+
+- [ ] Расширить fault/concurrency tests: stale cache, API outage, конфликт spec/status/delete, смена лидера.
+- [ ] Расширять CI для PR workflows после закрытия этапа 1; базовый operator e2e workflow уже подготовлен как проверка этапа 1.
+- [ ] Создание окружений из PR, привязка к image build, удаление при закрытии PR.
+- [ ] Определить безопасную модель доступа workflow к кластеру и registry, включая fork PR.
+- [ ] Ingress, домены, URL в status.
+- [ ] Политики сетевой изоляции и ограничения доступа к API.
+
+Базовые drift repair, ownership и optimistic locking включены в этап 1, поскольку нужны для корректного reconcile.
+
+## Этап 3 — Наблюдаемость и эксплуатация
+
+- [ ] Предметные Prometheus metrics, защищённый scrape endpoint, Grafana dashboard.
+- [ ] ResourceQuota/LimitRange, настраиваемые ресурсы, Pod Security и admission restrictions.
+- [ ] Helm Chart.
+- [ ] Нагрузочные и отказоустойчивые испытания с опубликованными измерениями.
+- [ ] Больше интеграционных сценариев и поддерживаемая Kubernetes version matrix.
+
+Requests/limits контейнера уже заданы в этапе 1. Стандартный metrics server controller-runtime доступен как опция процесса, но по умолчанию отключён и не оформлен как observability integration.

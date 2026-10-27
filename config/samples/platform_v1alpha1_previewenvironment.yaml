@@ -1,0 +1,9 @@
+apiVersion: platform.previewforge.dev/v1alpha1
+kind: PreviewEnvironment
+metadata:
+  name: pr-42
+spec:
+  image: nginx:alpine
+  replicas: 2
+  port: 80
+  ttlSeconds: 3600

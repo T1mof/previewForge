@@ -1,0 +1,7 @@
+/.cache/
+/bin/
+/coverage.out
+/coverage.html
+*.exe
+*.test
+.env

@@ -1,0 +1,119 @@
+name: Operator verification
+
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: operator-verification-${{ github.workflow }}-${{ github.ref }}
+  # Let a running suite finish cleanup instead of interrupting it on every push.
+  cancel-in-progress: false
+
+defaults:
+  run:
+    shell: bash
+
+jobs:
+  linux-checks:
+    name: Linux race and envtest
+    runs-on: ubuntu-24.04
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3
+        with:
+          persist-credentials: false
+      - uses: actions/setup-go@4dc6199c7b1a012772edbd06daecab0f50c9053c # v6.1.0
+        with:
+          go-version: '1.26.9'
+          cache: false
+      - name: Vet, build, race and real API integration
+        run: |
+          mkdir -p bin/ci
+          bash scripts/linux-checks.sh 2>&1 | tee bin/ci/linux-checks.log
+      - name: Script isolation and cleanup regression tests
+        run: |
+          export GOMODCACHE="$PWD/.cache/gomod"
+          export GOCACHE="$PWD/.cache/linux/go-build"
+          export GOBIN="$PWD/bin/linux"
+          go install github.com/rhysd/actionlint/cmd/actionlint@v1.7.12
+          bin/linux/actionlint .github/workflows/operator-e2e.yml
+          shellcheck -x scripts/kind-demo.sh scripts/kind-lifecycle.sh scripts/cleanup-kind.sh scripts/e2e.sh scripts/verify-e2e-result.sh
+          python3 scripts/test-kind-scripts.py
+          python3 scripts/test-e2e-cleanup.py
+          bash -n scripts/kind-demo.sh scripts/kind-lifecycle.sh scripts/cleanup-kind.sh scripts/e2e.sh scripts/verify-e2e-result.sh
+      - name: Upload verification log
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: linux-checks-${{ github.run_id }}-${{ github.run_attempt }}
+          path: bin/ci/*.log
+          retention-days: 7
+          if-no-files-found: warn
+
+  kubernetes-e2e:
+    name: Real Pods and cleanup in kind
+    needs: linux-checks
+    # Never use a persistent self-hosted runner or external Kubernetes credentials.
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    env:
+      KIND_EXPERIMENTAL_PROVIDER: docker
+    steps:
+      - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3
+        with:
+          persist-credentials: false
+      - uses: actions/setup-go@4dc6199c7b1a012772edbd06daecab0f50c9053c # v6.1.0
+        with:
+          go-version: '1.26.9'
+          cache: false
+      - name: Reserve invocation identity
+        run: |
+          cluster="previewforge-test-ci-${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}"
+          token=$(python3 -c 'import uuid; print(uuid.uuid4().hex)')
+          printf 'PREVIEWFORGE_TEST_CLUSTER=%s\nPREVIEWFORGE_RUN_TOKEN=%s\nKUBECONFIG=%s/bin/runs/%s/kubeconfig\n' \
+            "$cluster" "$token" "$PWD" "$cluster" >> "$GITHUB_ENV"
+          mkdir -p bin/linux bin/ci
+          printf '%s/bin/linux\n' "$PWD" >> "$GITHUB_PATH"
+      - name: Install pinned kind and kubectl
+        run: |
+          GOBIN="$PWD/bin/linux" go install sigs.k8s.io/kind@v0.33.0
+          curl --fail --location --retry 3 -o bin/linux/kubectl https://dl.k8s.io/release/v1.37.0/bin/linux/amd64/kubectl
+          checksum=$(curl --fail --location --retry 3 https://dl.k8s.io/release/v1.37.0/bin/linux/amd64/kubectl.sha256)
+          printf '%s  bin/linux/kubectl\n' "$checksum" | sha256sum --check
+          chmod u+x bin/linux/kubectl
+          docker info
+      - name: Run real Kubernetes scenarios
+        run: bash scripts/e2e.sh 2>&1 | tee bin/ci/e2e.log
+      - name: Cleanup only the cluster claimed by this invocation
+        if: always() && env.PREVIEWFORGE_RUN_TOKEN != ''
+        timeout-minutes: 3
+        run: |
+          bash scripts/cleanup-kind.sh
+          directory="bin/runs/$PREVIEWFORGE_TEST_CLUSTER"
+          if [[ -f "$directory/cleanup.txt" ]]; then
+            mkdir -p "$directory/artifacts"
+            cp "$directory/cleanup.txt" "$directory/artifacts/cleanup.txt"
+          fi
+      - name: Require complete Kubernetes results and cleanup evidence
+        run: bash scripts/verify-e2e-result.sh
+      - name: Attach actual results to the job summary
+        if: always()
+        run: |
+          shopt -s nullglob
+          for result in bin/runs/*/artifacts/{checks,result,cleanup}.txt; do
+            cat "$result" >> "$GITHUB_STEP_SUMMARY"
+          done
+      - name: Upload diagnostics without kubeconfig or credentials
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: kind-e2e-${{ github.run_id }}-${{ github.run_attempt }}
+          path: |
+            bin/ci/e2e.log
+            bin/runs/*/artifacts/**
+          retention-days: 7
+          if-no-files-found: warn

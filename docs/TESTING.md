@@ -1,0 +1,144 @@
+# Проверки
+
+Актуализировано: 2026-10-27. Среда: Windows/amd64, Go 1.26.1; Ubuntu WSL2/Linux amd64, Go 1.26.9 и gcc 13.3. Локальный Kubernetes e2e выполнен; запуск GitHub workflow пока не подтверждён.
+
+## Настоящий kind e2e (2026-10-27)
+
+Docker Desktop 4.89.0 / Engine 29.7.2 доступен из Windows. WSL Integration для Ubuntu выключена, поэтому штатный `scripts/e2e.sh` запущен через Git Bash с Windows kind 0.33.0 и kubectl 1.36.1. Kubernetes в kind — 1.37.0. Настройки WSL/Docker Desktop и пользовательский kubeconfig не менялись.
+
+Первый кластер `previewforge-test-local-20261027-a`: **13/13 PASS**, E2E exit code 0, cleanup exit code 0. `scripts/verify-e2e-result.sh` подтвердил полноту отчёта, отсутствие claim и доказательство удаления кластера.
+
+**Итоговый прогон после исправления EXPIRES** — `previewforge-test-local-20261027-c`: **13/13 PASS**, E2E exit code 0, cleanup exit code 0. Проверка полноты отчёта прошла в том же запуске; кластер отсутствует, claim снят. Все результаты таблицы ниже повторно подтверждены итоговым кодом и сгенерированной CRD.
+
+| Реальная проверка | Результат |
+| --- | --- |
+| Создание CR, Deployment и настоящих готовых Pod; controller owner UIDs | PASS |
+| Восстановление удалённого Deployment с новой UID; исправление replicas | PASS |
+| Новый Pod оператора после рестарта; изменение spec во время простоя | PASS; актуальная generation Ready |
+| HTTP через Service DNS и ClusterIP из smoke Pod; ready EndpointSlice | PASS; ответ nginx сохранён в `http.txt` |
+| Закрытый readiness-порт блокирует Ready; исправление порта завершает rollout | PASS |
+| Cleanup finalizer удерживает CR до исчезновения Namespace | PASS; проверено с блокирующим тестовым finalizer |
+| TTL при работающем операторе и после простоя; ручное удаление | PASS; CR и Namespace полностью исчезли |
+| Чужой Namespace с поддельными labels и ConfigMap-canary | PASS; UID/resourceVersion сохранены, чужой Namespace не принят под управление и не удалён |
+| Удаление тестового кластера и сохранение списка других kind-кластеров | PASS; `cleanup.txt`, claim удалён |
+
+Первый прогон выявил дефект колонки `EXPIRES`: Kubernetes отображал будущую дату как `<invalid>`, поскольку `type=date` предназначен для относительного возраста. Маркер изменён на `type=string`, CRD перегенерирована controller-gen 0.22.0; колонка предназначена для абсолютного RFC3339 deadline. Поле `status.expiresAt` и расчёт TTL не изменены.
+
+В новом кластере `previewforge-test-local-20261027-c` исправление проверено настоящим `kubectl get`: `EXPIRES` показывает `2026-10-27T20:52:14Z`. Вывод сохранён в `artifacts/expires.txt`. Там же сохранён `sources.sha256` с хешами Go-кода, manifests, скриптов и файлов сборки; соответствие текущим исходникам проверено. Git commit SHA этим не подменяется.
+
+`scripts/check.ps1 -Generate` после исправления: **PASS** (генерация, gofmt, vet, `go test ./...`, сборка Windows manager, Kustomize). Покрытие контроллера — 91,4%. Повторные Linux vet/build/race/envtest после исправления: **PASS**, unit race 2,852 с, envtest 14,56 с / пакет 15,803 с; manager работал под ServiceAccount RBAC.
+
+Повтор `previewforge-test-local-20261027-b` после изменения CRD: **FAIL** до установки оператора, `kubectl apply` не смог получить OpenAPI. В диагностике API server есть таймауты обращений к etcd и failed readiness probes; это не успешный Kubernetes suite. **Cleanup PASS**: кластер удалён, отсутствие проверено, claim снят. Отчёт ошибки сохранён в `bin/runs/previewforge-test-local-20261027-b/artifacts/`, лог — `bin/ci/previewforge-test-local-20261027-b.log`. Linux suite и успешная итоговая попытка c выполнены последовательно.
+
+Артефакты первого прогона: `bin/runs/previewforge-test-local-20261027-a/artifacts/`; полный лог: `bin/ci/e2e-local-20261027-a.log`. Они локальные и исключены из Git. Эти локальные прогоны выполнены до инициализации Git и выбора remote, поэтому не имеют commit SHA. После выбора T1mof/previewForge module path изменён; опубликованный commit требует отдельного CI run. Настоящий cleanup подтверждён при успехе и ошибке установки; сигналы и ошибки самого удаления проверялись ранее с fake CLI, запуск CI `always()` пока не подтверждён.
+
+Итоговые артефакты: `bin/runs/previewforge-test-local-20261027-c/artifacts/` (`checks.txt`, `result.txt`, `cleanup.txt`, `http.txt`, `expires.txt`, `sources.sha256`, диагностика kind). Полный лог: `bin/ci/previewforge-test-local-20261027-c.log`. Image оператора: `previewforge:previewforge-test-local-20261027-c`, digest `sha256:352909147bc7f10ce53615c5fe0262db85d0c28703449f213bcc36b61b4cb87d`.
+
+## История проверок кода (2026-10-11)
+
+Следующие результаты и ограничения зафиксированы до первого настоящего e2e; актуальный статус приведён выше.
+
+| Проверка | Фактический результат |
+| --- | --- |
+| `go test ./... -coverprofile=coverage.out` | PASS; покрытие `internal/controller` 91,4% |
+| `go vet ./...` | PASS |
+| `go build -trimpath -o bin/manager.exe ./cmd/manager` | PASS |
+| controller-gen 0.22.0: object, crd, rbac | PASS; генерируются DeepCopy, CRD и ClusterRole |
+| `kubectl kustomize config/default` | PASS; итоговый manifest в `bin/install.yaml` |
+| Linux/amd64 cross-build manager и `go test -c -tags=integration` | PASS; бинарники скомпилированы, не исполнялись |
+| `bash -n scripts/kind-demo.sh scripts/e2e.sh` | PASS; проверен синтаксис |
+| `scripts/check.ps1` | PASS; полный Windows workflow выполнен |
+| Linux `go vet ./...` и build через `scripts/linux-checks.sh` | PASS; manager в `bin/linux/manager` |
+| WSL2 `CGO_ENABLED=1 go test -race ./... -count=1` | PASS; контроллер 2,871 с, data races не обнаружены |
+| WSL2 `go test -race -tags=integration ... -run TestEnvtest -count=1` | PASS; suite 8,33 с, итог пакета 9,551 с |
+| `test-kind-scripts.py` в Windows и WSL2 | PASS; 7 случаев для PowerShell и 7 для Bash с подставными CLI |
+| Kustomize overlay отдельного запуска | PASS; image tag заменён на previewforge:previewforge-test-check |
+| `kind-demo.ps1 -ClusterName previewforge-test-audit` | BLOCKED; Docker Engine недоступен, отказ на preflight до создания кластера |
+
+## Повторная проверка и CI e2e (2026-10-11)
+
+| Проверка текущих изменений | Реальный результат |
+| --- | --- |
+| `scripts/linux-checks.sh` в Ubuntu WSL2 | PASS; vet/build, unit race 2,907 с, envtest suite 8,31 с / пакет 9,546 с под race detector |
+| `test-kind-scripts.py` | PASS; 7 сценариев PowerShell и 7 Bash повторно, подставные CLI |
+| `test-e2e-cleanup.py` | PASS; 17 сценариев с fake CLI: partial create/build/apply/setup/assertion/diagnostics failures, SIGTERM, успешный EXIT, отказ cleanup без владения и при смене endpoint, ошибка удаления и повторный cleanup |
+| Проверки полноты отчёта в том же harness | PASS; 4 синтетических случая: отказ для неполного отчёта, дубликатов и отсутствующего cleanup; принятие полного набора. Это не Kubernetes результат |
+| Actionlint 1.7.12 + ShellCheck 0.9.0 | PASS; итоговый workflow и Bash isolation/cleanup/e2e/report scripts |
+| `bash -n` итоговых Bash-скриптов | PASS |
+| `make LOCALBIN=.../bin/linux test-e2e` в Ubuntu | BLOCKED; exit 1 на Docker context preflight: Docker command недоступна без WSL Integration. Claim/кластер не создавались; Kubernetes assertions не выполнялись |
+| GitHub `Operator verification` | NOT RUN; workflow подготовлен локально, папка не является Git-репозиторием, GitHub remote/целевой URL отсутствует |
+
+Повторный Linux envtest подтвердил тот же набор настоящих API/RBAC проверок: разрешения ServiceAccount, конфликты Status/TTL Delete, UID precondition, foreign Namespace refusal и lifecycle с моделированным Deployment status. Эти результаты не подтверждают работу kubelet/HTTP/namespace controller.
+
+Подготовлен [.github/workflows/operator-e2e.yml](../.github/workflows/operator-e2e.yml): только GitHub-hosted Ubuntu, pinned Go/Actions/kind/kubectl/node image, read-only GitHub permissions, отдельные cluster/context/kubeconfig/image для каждого запуска. Сначала Linux race/envtest и регрессии скриптов, затем настоящие Kubernetes проверки. Pipeline требует все 13 check IDs и подтверждённый cleanup. Инструкции запуска — в [VERIFICATION.md](VERIFICATION.md).
+
+Ранний EXIT/INT/TERM trap теперь покрывает demo, image build, создание/rollout и assertions. Диагностика сохраняется до удаления; `cleanup-kind.sh` проверяет ownership token и тот же локальный Docker endpoint, удаляет только конкретное имя и проверяет отсутствие кластера. После успеха claim снимается; повторный `always()` cleanup ничего не удаляет. Ошибка cleanup делает suite/job неуспешным. Жёсткое завершение процесса/runner не гарантирует исполнение trap; это отдельно описано в SECURITY.md.
+
+| Требование настоящего e2e | Подготовленная проверка | Подтверждение на 2026-10-11 |
+| --- | --- | --- |
+| Создание CR и настоящих Pod | Deployment rollout, Pod Ready, CR Ready/replicas | NOT RUN |
+| Ready после готовности приложения | Running/Ready=False на закрытом порту, затем реальный rollout после исправления | NOT RUN |
+| Service HTTP | Smoke Pod, DNS и ClusterIP, ready EndpointSlice, ответ nginx | NOT RUN |
+| Восстановление Deployment | Новая UID после Delete, настоящий rollout | NOT RUN |
+| Перезапуск контроллера | Новая UID Pod оператора, изменение spec во время простоя, актуальная generation Ready | NOT RUN |
+| TTL и полный cleanup Namespace | TTL при работающем операторе и после downtime; ожидание исчезновения CR/Namespace | NOT RUN |
+| Чужие ресурсы/кластеры | Foreign Namespace с forged labels, ConfigMap UID/RV, snapshot имён других кластеров, явный kubeconfig/context | NOT RUN; guards подтверждены только mock/envtest |
+| Cleanup при ошибках | Claim/token, EXIT/INT/TERM, CI always(), отсутствие кластера и cleanup artifact | NOT RUN с настоящим Docker; fault-injection проверки отдельно |
+
+На 2026-10-11 URL GitHub run, commit SHA и Kubernetes artifact отсутствовали. Локальные Kubernetes artifacts появились 2026-10-27; GitHub run по-прежнему не выполнен, этап 2 не начат.
+
+Локальный лог mock/fault-injection прогонов сохранён в `bin/ci/cleanup-checks-local.log`; эта папка исключена из Git. В нём нет Kubernetes run.
+
+Тесты проверяют создание ресурсов, Ready, идемпотентность без записи, обновление spec с сохранением Service IP, drift repair, recreation/restart, TTL и ожидание финализации, недоверенный status.namespace, ownership collisions, ошибки API и конфликт finalizer patch, независимую обработку восьми CR. Отдельно проверяются отказ от status patch при изменении UID/generation/deletionTimestamp и ожидание Terminating Namespace/Service.
+
+Fake client не имеет namespace controller или GC. В TTL unit-тесте завершение удаления Namespace моделируется вручную; это не является доказательством настоящей очистки кластера.
+
+## Что исправлено и дополнительно проверено
+
+- Регрессионный тест сначала подтвердил потерю свежей Condition при копировании Status из кеша. Теперь Conditions берутся из uncached APIReader; сохраняются чужие Conditions и lastTransitionTime при неизменном Ready. Unit-тест прошёл после исправления.
+- Actual optimistic-lock conflict на Status patch проверяется и fake client, и настоящим API: новый status не перезаписывается, retry проходит.
+- Конкурентное продление TTL между status patch и Delete вызывает HTTP 409 и сохраняет CR. Отдельно проверен wrong UID на Namespace Delete — HTTP 409, Namespace остаётся без deletionTimestamp.
+- Замена Namespace между read/delete проверена unit-тестом по resourceVersion. Fake client не реализует UID precondition; проверку UID поэтому подтверждает envtest.
+- Cleanup сохраняет собственный и внешний finalizer при ошибке API; после успешной очистки снимается только собственный. Проверяется отказ удаления Namespace с чужой controller reference/без неё, даже с поддельными labels и status.namespace.
+- Envtest загружает реальные RBAC manifests и запускает manager под ServiceAccount identity. Проверены разрешённые операции и запрет Secrets read, Pod delete, ClusterRole create, Lease/Event в других Namespace. Role в previewforge-system дополнена create/patch Event для стандартного leader election recorder.
+- Envtest подтвердил CRD validation/defaulting, API defaults idempotence, simulated Ready, child delete watch/recreation, manager restart с leader election и TTL с удержанием finalizer.
+- Первый envtest прогон выявил глобальную проверку повторного имени контроллера при создании второго manager в одном процессе. Только тестовому manager разрешена повторная регистрация после полного завершения первого; production validation не менялась. Повторный прогон прошёл под race detector.
+- Demo-скрипты отказываются от существующего кластера/каталога запуска, недопустимого имени и удалённого Docker context/DOCKER_HOST. Подставные CLI подтвердили явные kubeconfig/context, отдельный image tag/overlay и сохранность пользовательского kubeconfig. Это не запуск workloads.
+
+## Ограничения предыдущей среды (2026-10-11)
+
+Состояние на дату прежней проверки; Docker в Windows стал доступен 2026-10-27, что позволило выполнить настоящий e2e через Git Bash.
+
+- Docker CLI 29.7.2 установлен, но `docker version` не подключается к `dockerDesktopLinuxEngine`: named pipe отсутствует, Docker Engine остановлен.
+- kubectl установлен; `kubectl config current-context` сообщает `current-context is not set`.
+- На Windows kind, Kubebuilder CLI, make и gcc отсутствуют. controller-gen установлен в `bin/` проекта. В Ubuntu WSL2 установлены gcc/make/libc6-dev; Go 1.26.9 и setup-envtest находятся в проекте.
+- Native Windows ограничения race/envtest обойдены через WSL2. Обе проверки реально выполнены в Linux. Envtest assets Kubernetes 1.37.0 (API server, etcd, kubectl) доступны в `bin/linux/envtest/k8s/1.37.0-linux-amd64`.
+- Docker image, kind demo/e2e, настоящие Pods, HTTP и Kubernetes GC не проверены в этой среде.
+
+## Как проверить в Linux
+
+Нужны Go 1.26+ (желательно актуальный patch), make, gcc для race, kubectl, Bash, работающий Docker Engine и доступ к Go modules/GitHub/container registries.
+
+```bash
+make manifests
+make vet test build
+make test-race
+make test-integration
+make test-e2e
+```
+
+`scripts/linux-checks.sh` выполняет vet/build/race/envtest через Linux Go. `make test-integration` устанавливает setup-envtest 0.25.2, скачивает Kubernetes 1.37.0 assets и выполняет TestEnvtest под race detector. В envtest отсутствуют kubelet, Deployment controller, namespace controller и GC: Ready моделируется, фактическое исчезновение Namespace не подтверждается этим уровнем.
+
+`make test-e2e` устанавливает kind 0.33.0 и создаёт только новый локальный `previewforge-test-*`. Проверяет настоящий HTTP/lifecycle, owners, held finalizer, активный TTL и TTL после downtime, manual cleanup, чужой Namespace с поддельными labels и canary. Сохраняет диагностику и удаляет только кластер с claim/token этого запуска, включая ошибки; чужие тестовые fixtures последнего сценария удаляются с тестовым кластером. Demo для ручной проверки сохраняет кластер.
+
+В Windows первый сквозной запуск после старта Docker Desktop: `scripts/kind-demo.ps1`. Он не требует make/Bash и не меняет пользовательский kubeconfig. Полная инструкция, включая WSL Docker integration и PATH для Linux kubectl, — [VERIFICATION.md](VERIFICATION.md).
+
+## Оставшиеся риски и неподтверждённые сценарии
+
+Подробный анализ широких RBAC-прав (включая косвенный доступ через workload creation), сетевой изоляции/CNI и удаления всего содержимого управляемого Namespace с минимальными практическими мерами — в [SECURITY.md](SECURITY.md). Предложения admission/NetworkPolicy пока не реализованы и не считаются проверенной защитой.
+
+- Локальный Bash e2e подтвердил Ready, HTTP/DNS/Service routing, восстановление Deployment, рестарт in-cluster manager и окончание Namespace GC. Запуск того же workflow на GitHub-hosted runner ещё не выполнен.
+- PowerShell demo не выполнялся полностью в Docker/kind; настоящий lifecycle подтверждён Bash e2e через Git Bash.
+- ClusterRole имеет cluster-wide доступ к Namespace/Deployment/Service; ownership guards не защищают от компрометации оператора. Envtest подтверждает текущие разрешения и guard logic, но не является нагрузочным или security audit.
+- Namespace является единицей владения/очистки: ресурсы, вручную помещённые в принадлежащий preview Namespace, удаляются вместе с ним. Чужие Namespace защищены проверкой controller owner reference, UID и resourceVersion.
+- Namespace изоляция не обеспечивает сетевую изоляцию; NetworkPolicy и дополнительные admission restrictions остаются вне этапа 1.
