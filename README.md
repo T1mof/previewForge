@@ -4,7 +4,7 @@
 
 PreviewForge — Kubernetes Operator на Go для изолированных тестовых окружений. Пользователь создаёт cluster-scoped `PreviewEnvironment`; оператор создаёт Namespace, Deployment и Service, согласовывает состояние и удаляет окружение по TTL.
 
-Реализована основа этапа 1; 2026-10-27 настоящий lifecycle в локальном kind прошёл все 13 проверок, включая HTTP, рестарт, TTL и полное удаление Namespace и тестового кластера. Команды для WSL2 и Git Bash описаны в [VERIFICATION.md](docs/VERIFICATION.md); реальные результаты — в [TESTING.md](docs/TESTING.md). Остаётся подтвердить запуск подготовленного GitHub workflow в целевом репозитории. Автоматическая связь с Pull Request относится к этапу 2.
+Реализована основа этапа 1; 2026-10-27 настоящий lifecycle в локальном kind прошёл все 13 проверок, включая HTTP, рестарт, TTL и полное удаление Namespace и тестового кластера. Команды для WSL2 и Git Bash описаны в [VERIFICATION.md](docs/VERIFICATION.md); реальные результаты — в [TESTING.md](docs/TESTING.md). GitHub Actions также прошёл: [run 40576650171](https://github.com/T1mof/previewForge/actions/runs/40576650171), оба job SUCCESS; [отчёт с проверенным artifact](docs/verification/2026-10-27-stage1.md). Этап 1 завершён. Автоматическая связь с Pull Request относится к этапу 2.
 
 ```mermaid
 flowchart LR

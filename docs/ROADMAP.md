@@ -1,6 +1,6 @@
 # Roadmap
 
-Обновлено: 2026-10-27. Исходное [ТЗ](SPECIFICATION.md) сохранено без изменений. Локальная приёмка этапа 1 в настоящем kind подтверждена; остаётся запуск подготовленного CI в целевом GitHub-репозитории. Этап 2 не начат.
+Обновлено: 2026-10-27. Исходное [ТЗ](SPECIFICATION.md) сохранено без изменений. Этап 1 завершён: локальный kind и GitHub run 40576650171 подтверждены. Проверенный commit, все 13 результатов и cleanup зафиксированы в [отчёт CI](verification/2026-10-27-stage1.md). Следующий шаг — демонстрационный кластер с Ingress, затем PR integration.
 
 ## Этап 1 — Рабочий Kubernetes Operator
 
@@ -23,13 +23,13 @@
 - [x] Подготовлен GitHub Actions workflow этапа 1: hosted Ubuntu, race/envtest, отдельный kind/kubeconfig, диагностика, EXIT/always() cleanup и обязательные 13 результатов сценариев. Это конфигурация; удалённый запуск ещё не подтверждён.
 - [x] Добавлены проверки настоящих Pod/readiness, Service DNS/ClusterIP, активного TTL; cleanup ограничен claim/token/локальным Docker endpoint текущего запуска. Остаточные риски и меры защиты описаны в SECURITY.md.
 - [x] На 2026-10-11: Linux vet/build/race/envtest, Actionlint/ShellCheck, 17 mock cleanup сценариев и 4 синтетических report gate проверки — PASS. Тогда настоящий e2e остановился на Docker preflight; успешный локальный Kubernetes run выполнен позже, 2026-10-27.
-- [ ] Выполнить workflow в [T1mof/previewForge](https://github.com/T1mof/previewForge) и записать URL run, commit SHA, итог Kubernetes job и cleanup artifact. Пользователь выбрал репозиторий 2026-10-27; доступ для push проверен.
+- [x] Выполнен workflow в T1mof/previewForge: run 40576650171, commit 7d0a156, оба job SUCCESS. Скачанный kind artifact проверен по digest, commit, всем 13 check ID и cleanup; см. отчёт этапа 1.
 - [x] Собран Docker image; штатный Bash kind demo/e2e выполнен через Git Bash с локальным Docker Desktop. Все 13 проверок — PASS, cleanup тестового кластера подтверждён.
 - [x] Подтверждены реальные Pod/readiness, HTTP через Service DNS/ClusterIP, рестарт, TTL при работе/простое, finalizer до исчезновения Namespace и отказ изменения чужих ресурсов.
 - [x] Исправлена колонка EXPIRES: абсолютный RFC3339 deadline вместо `<invalid>` для будущей даты; CRD перегенерирована controller-gen 0.22.0.
 - [x] После исправления: Windows Generate/gofmt/vet/test/build/Kustomize и Linux vet/build/race/envtest — PASS. Итоговый новый kind-кластер c: 13/13 PASS, report gate и cleanup PASS. Промежуточный отказ API server в кластере b записан отдельно; cleanup при этой ошибке также подтверждён.
 
-Воспроизведение: `scripts/check.ps1` для Windows; `wsl --distribution Ubuntu --exec bash /mnt/e/PreviewForge/scripts/linux-checks.sh` для race/envtest. Полный локальный e2e подтверждён 2026-10-27 через Git Bash, без изменения настроек WSL Integration. Итоговые отчёты находятся в `bin/runs/previewforge-test-local-20261027-c/artifacts/`; кластер удалён. Для GitHub CI выбран T1mof/previewForge; первый опубликованный commit должен получить подтверждение Linux/kind job. Точные команды и запуск CI — в [VERIFICATION.md](VERIFICATION.md), реальные результаты — в [TESTING.md](TESTING.md), меры защиты — в [SECURITY.md](SECURITY.md). После CI следующий шаг — демонстрационный кластер с Ingress; PR integration следует за ним.
+Воспроизведение: `scripts/check.ps1` для Windows; `wsl --distribution Ubuntu --exec bash /mnt/e/PreviewForge/scripts/linux-checks.sh` для race/envtest. Полный локальный e2e подтверждён 2026-10-27 через Git Bash, без изменения настроек WSL Integration. Итоговые отчёты находятся в `bin/runs/previewforge-test-local-20261027-c/artifacts/`; кластер удалён. Первый опубликованный commit 7d0a156 подтверждён GitHub Linux/kind job; artifact и cleanup проверены независимо. Точные команды и запуск CI — в [VERIFICATION.md](VERIFICATION.md), реальные результаты — в [TESTING.md](TESTING.md), меры защиты — в [SECURITY.md](SECURITY.md). После CI следующий шаг — демонстрационный кластер с Ingress; PR integration следует за ним.
 
 ## Этап 2 — Надёжность и PR integration
 

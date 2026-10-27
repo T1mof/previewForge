@@ -1,8 +1,14 @@
 # Проверки
 
-Актуализировано: 2026-10-27. Среда: Windows/amd64, Go 1.26.1; Ubuntu WSL2/Linux amd64, Go 1.26.9 и gcc 13.3. Локальный Kubernetes e2e выполнен; запуск GitHub workflow пока не подтверждён.
+Актуализировано: 2026-10-27. Среда: Windows/amd64, Go 1.26.1; Ubuntu WSL2/Linux amd64, Go 1.26.9 и gcc 13.3. Локальный Kubernetes e2e и GitHub workflow подтверждены; этап 1 завершён.
 
-## Настоящий kind e2e (2026-10-27)
+## GitHub CI (2026-10-27)
+
+[Run 40576650171](https://github.com/T1mof/previewForge/actions/runs/40576650171), commit `7d0a1561d5f6b49c2c360907fa14e7be0e9390e7`: оба job **SUCCESS**. Linux race 3,285 с, envtest 7,44 с / пакет 8,501 с под ServiceAccount RBAC; настоящий kind e2e **13/13 PASS**, cleanup и report gate PASS. Скачанный artifact отдельно проверен по digest, commit, двум HTTP-ответам и всем check ID. Подробности — в [отчёт CI](verification/2026-10-27-stage1.md).
+
+Перед публикацией с новым module path Windows Generate/gofmt/vet/test/build/Kustomize и Linux vet/build/race/envtest также прошли; локальный race 2,882 с, envtest 15,80 с / пакет 17,037 с.
+
+## Настоящий локальный kind e2e (2026-10-27)
 
 Docker Desktop 4.89.0 / Engine 29.7.2 доступен из Windows. WSL Integration для Ubuntu выключена, поэтому штатный `scripts/e2e.sh` запущен через Git Bash с Windows kind 0.33.0 и kubectl 1.36.1. Kubernetes в kind — 1.37.0. Настройки WSL/Docker Desktop и пользовательский kubeconfig не менялись.
 

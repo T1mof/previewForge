@@ -1,7 +1,7 @@
 # PreviewForge: постоянные инструкции
 
 - Сначала прочитать README.md, docs/ROADMAP.md и docs/TESTING.md. Исходное ТЗ: docs/SPECIFICATION.md.
-- Lifecycle этапа 1 подтверждён локальным kind e2e. Порядок пользователя: сначала подтвердить GitHub CI и локальный kind, затем демонстрационный кластер с Ingress, после него PR integration. Не перескакивать к сложным PR workflows, Helm или observability раньше этих проверок.
+- Этап 1 подтверждён локальным kind и GitHub run 40576650171 (commit 7d0a156), artifact проверен отдельно. Порядок пользователя: теперь демонстрационный кластер с Ingress, после него PR integration. Не перескакивать к сложным PR workflows, Helm или observability раньше демонстрации Ingress.
 - Целевой репозиторий: https://github.com/T1mof/previewForge.git; Go module path github.com/T1mof/previewForge. Пользователь разрешил продолжать разработку самостоятельно; уточнять существенные решения архитектуры и необходимые внешние данные.
 - Следовать Kubebuilder Go v4 layout. API: api/v1alpha1; reconcile: internal/controller; entrypoint: cmd/manager.
 - PreviewEnvironment cluster-scoped. Никогда не принимать под управление/удалять ресурсы только по labels, имени или status.namespace; проверять controller owner reference и UID.
