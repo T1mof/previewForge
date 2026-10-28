@@ -9,16 +9,20 @@ import (
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/healthz"
 	"sigs.k8s.io/controller-runtime/pkg/log/zap"
+	"sigs.k8s.io/controller-runtime/pkg/metrics"
+	"sigs.k8s.io/controller-runtime/pkg/metrics/filters"
 	metricsserver "sigs.k8s.io/controller-runtime/pkg/metrics/server"
 
 	platformv1 "github.com/T1mof/previewForge/api/v1alpha1"
 	"github.com/T1mof/previewForge/internal/controller"
+	"github.com/T1mof/previewForge/internal/monitoring"
 )
 
 func main() {
-	var metricsAddr, probeAddr, leaderNamespace string
+	var metricsAddr, metricsCertDir, probeAddr, leaderNamespace string
 	var leaderElection bool
 	flag.StringVar(&metricsAddr, "metrics-bind-address", "0", "Metrics address; 0 disables the server")
+	flag.StringVar(&metricsCertDir, "metrics-cert-path", "", "Directory with tls.crt/tls.key; empty uses an ephemeral self-signed metrics certificate")
 	flag.StringVar(&probeAddr, "health-probe-bind-address", ":8081", "Health probe address")
 	flag.BoolVar(&leaderElection, "leader-elect", false, "Enable leader election")
 	flag.StringVar(&leaderNamespace, "leader-election-namespace", "previewforge-system", "Namespace for leader election Lease")
@@ -38,7 +42,7 @@ func main() {
 	}
 	mgr, err := ctrl.NewManager(ctrl.GetConfigOrDie(), ctrl.Options{
 		Scheme:                  scheme,
-		Metrics:                 metricsserver.Options{BindAddress: metricsAddr},
+		Metrics:                 metricsserver.Options{BindAddress: metricsAddr, SecureServing: true, CertDir: metricsCertDir, FilterProvider: filters.WithAuthenticationAndAuthorization},
 		HealthProbeBindAddress:  probeAddr,
 		LeaderElection:          leaderElection,
 		LeaderElectionID:        "controller.previewforge.dev",
@@ -49,6 +53,10 @@ func main() {
 		os.Exit(1)
 	}
 	r := &controller.PreviewEnvironmentReconciler{Client: mgr.GetClient(), APIReader: mgr.GetAPIReader(), Scheme: scheme}
+	if err := metrics.Registry.Register(monitoring.NewInventory(mgr.GetAPIReader())); err != nil {
+		log.Error(err, "register inventory metrics")
+		os.Exit(1)
+	}
 	if err := r.SetupWithManager(mgr); err != nil {
 		log.Error(err, "set up controller")
 		os.Exit(1)

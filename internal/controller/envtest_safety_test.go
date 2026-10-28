@@ -97,6 +97,8 @@ func envtestOperatorConfig(t *testing.T, env *envtest.Environment, admin client.
 			{"", "secrets", "get", "previewforge-system", false},
 			{"", "pods", "delete", "arbitrary-preview", false},
 			{"rbac.authorization.k8s.io", "clusterroles", "create", "", false},
+			{"authentication.k8s.io", "tokenreviews", "create", "", true},
+			{"authorization.k8s.io", "subjectaccessreviews", "create", "", true},
 		} {
 			eventually(t, func() error {
 				resource, subresource, _ := strings.Cut(check.resource, "/")

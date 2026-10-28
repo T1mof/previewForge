@@ -30,6 +30,8 @@ finish() {
       k get events -A --sort-by=.lastTimestamp > "$directory/artifacts/events.txt" 2>&1 || true
       k -n previewforge-system logs deployment/previewforge-controller-manager --tail=300 > "$directory/artifacts/operator.log" 2>&1 || true
       k -n previewforge-ingress-system logs deployment/traefik --tail=200 > "$directory/artifacts/traefik.log" 2>&1 || true
+      k -n previewforge-monitoring logs deployment/prometheus --tail=200 > "$directory/artifacts/prometheus.log" 2>&1 || true
+      k -n previewforge-monitoring logs deployment/grafana --tail=200 > "$directory/artifacts/grafana.log" 2>&1 || true
       if command -v timeout >/dev/null; then
         timeout 60s kind export logs "$directory/artifacts/kind" --name "$PREVIEWFORGE_TEST_CLUSTER" || true
       fi
@@ -158,6 +160,8 @@ spec:
 EOF
 }
 # A running container with a closed readiness port must not become CR Ready.
+source scripts/e2e-metrics.sh
+
 create_preview e2e-readiness 3600 81
 readiness_ns=''
 readiness_rejected() {

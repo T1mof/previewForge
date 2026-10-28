@@ -49,7 +49,7 @@ Invoke-Checked { kubectl --kubeconfig $taskConfig --context $taskContext apply -
 Invoke-Checked { kubectl --kubeconfig $taskConfig --context $taskContext wait --for=condition=Established crd/previewenvironments.platform.previewforge.dev --timeout=60s }
 Invoke-Checked { kubectl --kubeconfig $taskConfig --context $taskContext -n previewforge-system rollout status deployment/previewforge-controller-manager --timeout=120s }
 Invoke-Checked { kubectl --kubeconfig $taskConfig --context $taskContext apply -f config/samples/platform_v1alpha1_previewenvironment.yaml }
-Invoke-Checked { kubectl --kubeconfig $taskConfig --context $taskContext wait --for=condition=Ready previewenvironment/pr-42 --timeout=180s }
+Invoke-Checked { kubectl --kubeconfig $taskConfig --context $taskContext wait --for=condition=Ready previewenvironment/pr-42 --timeout=300s }
 Invoke-Checked { kubectl --kubeconfig $taskConfig --context $taskContext get previewenvironment/pr-42 }
 Write-Host "Cluster: $ClusterName; context: $taskContext; kubeconfig: $taskConfig"
 Write-Host "To remove only this test cluster: .\bin\kind.exe delete cluster --name $ClusterName"

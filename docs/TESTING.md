@@ -1,5 +1,13 @@
 # Проверки
 
+## Метрики и monitoring demo (2026-10-28)
+
+Windows `scripts/check.ps1 -Generate`: **PASS**, controller-gen 0.22.0, gofmt/vet/test, сборка manager/CLI и Kustomize. Monitoring collector — 95,7% coverage, controller — 92,0%. Linux vet/build/race/envtest: **PASS**; race example 1,126 с, controller 3,244 с, monitoring 1,845 с, prenvironment 1,989 с; envtest 19,34 с / пакет 20,574 с. Envtest проверил обновлённый operator ServiceAccount RBAC, включая разрешения TokenReview/SubjectAccessReview; настоящую HTTPS auth проверяет отдельный kind-сценарий.
+
+Metadata tests 8/8, Bash isolation 9/9, fake cleanup/demo 21/21, synthetic report gate 4/4 и ShellCheck/Actionlint — **PASS**. Gate расширен до 16 check ID; синтетические отчёты не считаются Kubernetes e2e. Kustomize monitoring demo — **PASS**.
+
+Первый kind `previewforge-test-metrics-20261028-a`: **FAIL** до metrics check, первоначальный CR не достиг Ready. В events — nginx ImagePullBackOff после TLS handshake timeout при запросе anonymous Docker Hub token; также были рестарты control plane во время cold build. Operator запустился и создал дочерние ресурсы. **Cleanup PASS**, отсутствие кластера подтверждено. Повтор b также **FAIL** до metrics check: nginx скачался за 2 минуты 53 секунды, контейнеры запустились за несколько секунд до исходного трёхминутного timeout. **Cleanup PASS**. Окно первого cold Ready в Bash/PowerShell увеличено до 300 секунд; критерий Ready сохранён. Эти запуски monitoring не подтверждают; итоговый прогон фиксируется отдельно.
+
 Актуализировано: 2026-10-28. Среда: Windows/amd64, Go 1.26.1; Ubuntu WSL2/Linux amd64, Go 1.26.9 и gcc 13.3. Локальный Kubernetes e2e и GitHub workflow подтверждены; этап 1 завершён.
 
 ## Подготовка PR-интеграции (2026-10-28)

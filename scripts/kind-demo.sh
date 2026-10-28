@@ -58,7 +58,7 @@ k apply -k "$overlay"
 k wait --for=condition=Established crd/previewenvironments.platform.previewforge.dev --timeout=60s
 k -n previewforge-system rollout status deployment/previewforge-controller-manager --timeout=120s
 k apply -f config/samples/platform_v1alpha1_previewenvironment.yaml
-k wait --for=condition=Ready previewenvironment/pr-42 --timeout=180s
+k wait --for=condition=Ready previewenvironment/pr-42 --timeout=300s
 k get previewenvironment/pr-42
 echo "Cluster: $cluster; context: $context; kubeconfig: $kubeconfig"
 echo "Remove only this test cluster with: kind delete cluster --name $cluster"

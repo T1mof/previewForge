@@ -1,0 +1,21 @@
+resources:
+  - ../metrics-reader
+  - namespace.yaml
+  - prometheus.yaml
+  - grafana.yaml
+configMapGenerator:
+  - name: previewforge-prometheus-config
+    namespace: previewforge-monitoring
+    files:
+      - prometheus/prometheus.yml
+      - prometheus/rules.yml
+      - prometheus/rules.test.yml
+  - name: previewforge-grafana-config
+    namespace: previewforge-monitoring
+    files:
+      - grafana/datasource.yaml
+      - grafana/providers.yaml
+  - name: previewforge-grafana-dashboard
+    namespace: previewforge-monitoring
+    files:
+      - grafana/previewforge.json

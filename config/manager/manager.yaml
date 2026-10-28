@@ -27,7 +27,10 @@ spec:
           args:
             - --leader-elect
             - --health-probe-bind-address=:8081
+            - --metrics-bind-address=:8443
           ports:
+            - name: metrics
+              containerPort: 8443
             - name: health
               containerPort: 8081
           securityContext:

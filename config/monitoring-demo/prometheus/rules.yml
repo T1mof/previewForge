@@ -1,0 +1,24 @@
+groups:
+  - name: previewforge
+    rules:
+      - alert: PreviewForgeInventoryUnavailable
+        expr: max(previewforge_inventory_up{job="previewforge"}) == 0 or absent(previewforge_inventory_up{job="previewforge"})
+        for: 2m
+        labels:
+          severity: warning
+        annotations:
+          summary: PreviewForge cannot read its Kubernetes inventory
+      - alert: PreviewForgeCleanupStuck
+        expr: max(previewforge_cleanup_oldest_age_seconds{job="previewforge"}) > 300 and on() max(previewforge_inventory_up{job="previewforge"}) == 1
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: PreviewForge namespace cleanup has been pending for over five minutes
+      - alert: PreviewForgeReconcileErrors
+        expr: sum(rate(controller_runtime_reconcile_total{job="previewforge",controller="previewenvironment",result="error"}[5m])) > 0
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: PreviewForge is repeatedly failing reconciliation

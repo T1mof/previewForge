@@ -56,4 +56,4 @@
 - [ ] Нагрузочные и отказоустойчивые испытания с опубликованными измерениями.
 - [ ] Больше интеграционных сценариев и поддерживаемая Kubernetes version matrix.
 
-Requests/limits контейнера уже заданы в этапе 1. Стандартный metrics server controller-runtime доступен как опция процесса, но по умолчанию отключён и не оформлен как observability integration.
+Requests/limits контейнера уже заданы в этапе 1. Реализованы inventory collector из Kubernetes и защищённый HTTPS endpoint в default manifests; optional Prometheus/Grafana demo и e2e описаны в [OBSERVABILITY.md](OBSERVABILITY.md). Приёмка metrics/monitoring отмечается после настоящего kind и CI; запуск процесса вне manifests оставляет metrics выключенными по умолчанию.

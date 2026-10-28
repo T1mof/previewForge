@@ -1,0 +1,32 @@
+rule_files:
+  - rules.yml
+evaluation_interval: 1m
+tests:
+  - interval: 1m
+    input_series:
+      - series: 'previewforge_inventory_up{job="previewforge"}'
+        values: '0 0 0 1 1 1'
+    alert_rule_test:
+      - eval_time: 2m
+        alertname: PreviewForgeInventoryUnavailable
+        exp_alerts:
+          - exp_labels: {severity: warning}
+            exp_annotations: {summary: PreviewForge cannot read its Kubernetes inventory}
+      - eval_time: 3m
+        alertname: PreviewForgeInventoryUnavailable
+        exp_alerts: []
+  - interval: 1m
+    input_series:
+      - series: 'previewforge_inventory_up{job="previewforge"}'
+        values: '1 1 1 1 1 1'
+      - series: 'previewforge_cleanup_oldest_age_seconds{job="previewforge"}'
+        values: '301 361 421 481 541 601'
+    alert_rule_test:
+      - eval_time: 4m
+        alertname: PreviewForgeCleanupStuck
+        exp_alerts: []
+      - eval_time: 5m
+        alertname: PreviewForgeCleanupStuck
+        exp_alerts:
+          - exp_labels: {severity: warning}
+            exp_annotations: {summary: PreviewForge namespace cleanup has been pending for over five minutes}

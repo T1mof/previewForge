@@ -31,6 +31,7 @@ flowchart LR
 - TTL от времени создания CR и finalizer, ожидающий фактического удаления Namespace.
 - Watch дочерних ресурсов, четыре reconcile worker, optimistic locking, leader election в Deployment оператора.
 - Unit-тесты, envtest suite для Linux/macOS и сценарий e2e в выделенном kind-кластере.
+- Предметные inventory metrics из Kubernetes, HTTPS endpoint с authn/authz, optional Prometheus/Grafana demo и dashboard: [наблюдаемость](docs/OBSERVABILITY.md).
 - CLI `previewctl`, отдельный deployer RBAC, example Go HTTP server и выключенный PR workflow: immutable image, актуальный head, update/close и проверка владельца по UID. [Подготовка отдельного кластера](docs/PR-INTEGRATION.md); размещение и внешний PR lifecycle будут проверены позже.
 
 Namespace обеспечивает разделение ресурсов и удаление окружения целиком. Сетевая изоляция между Namespace ещё не реализована: для неё необходимы NetworkPolicy и совместимый CNI. По умолчанию приложение доступно внутри кластера; внешний HTTP(S) включается через необязательный Ingress. API, URL и локальный demo описаны в [INGRESS.md](docs/INGRESS.md).

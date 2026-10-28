@@ -26,6 +26,7 @@ generate: $(LOCALBIN)/controller-gen
 manifests: generate
 	$(LOCALBIN)/controller-gen crd rbac:roleName=previewforge-manager-role 'paths=./api/v1alpha1;./internal/controller' output:crd:artifacts:config=config/crd/bases output:rbac:artifacts:config=config/rbac
 	$(LOCALBIN)/controller-gen rbac:roleName=previewforge-pr-deployer-role paths=./internal/prenvironment output:rbac:artifacts:config=config/pr-deployer
+	$(LOCALBIN)/controller-gen rbac:roleName=previewforge-metrics-reader paths=./internal/monitoring output:rbac:artifacts:config=config/metrics-reader
 
 fmt:
 	gofmt -w api cmd internal examples
