@@ -53,7 +53,7 @@ Manager запускает четыре worker; workqueue сериализует
 
 Оператор не читает Secrets и не управляет Pod напрямую. ClusterRole ограничена PreviewEnvironment, Namespace, Deployment, Service и Ingress; Lease и запись Event для leader election доступны через Role только в `previewforge-system`. Динамические Namespace требуют cluster-wide разрешений на перечисление и создание ресурсов: RBAC не умеет ограничивать права произвольными owner labels. Ownership guards являются логикой приложения, а не защитой от компрометации самого оператора.
 
-На app container: requests 100m CPU/64Mi, limits 500m/256Mi, 1–10 реплик и TCP readiness. ServiceAccount token в app Pod отключён. Ограничения всего Namespace, NetworkPolicy/CNI, Pod Security для недоверенных workloads и admission-политики остаются будущей работой; текущий этап предназначен для доверенных приложений в локальном тестовом кластере.
+Requests по умолчанию 100m/64Mi, limits 500m/256Mi; API допускает настройку в ограниченном диапазоне. Поддерживаются 1–10 реплик, один surge Pod и TCP readiness. ServiceAccount token отключён. До Deployment создаются принадлежащие CR ResourceQuota/LimitRange и согласуются Namespace Pod Security labels. Профили baseline/restricted, фиксированный Namespace budget, владение всей PodSpec и границы защиты описаны в [RESOURCE-CONTROLS.md](RESOURCE-CONTROLS.md). NetworkPolicy/CNI и дополнительные ограничения cluster-wide прав оператора остаются будущей работой; проект предназначен для доверенных приложений в отдельном тестовом кластере.
 
 ## Необязательный Ingress
 

@@ -133,7 +133,7 @@ jobs:
           extra=()
           if [[ -n "$TLS_SECRET" ]]; then extra+=(--tls-secret "$TLS_SECRET"); fi
           bin/previewctl apply "${common[@]}" --image "$BUILD_IMAGE" --revision "$HEAD_SHA" \
-            --host "$PREVIEW_HOST" --ingress-class "$INGRESS_CLASS" --port 8080 --ttl-seconds "$TTL_SECONDS" \
+            --host "$PREVIEW_HOST" --ingress-class "$INGRESS_CLASS" --port 8080 --ttl-seconds "$TTL_SECONDS" --security-profile restricted \
             "${extra[@]}" > "$RUNNER_TEMP/preview-result.json"
           python3 - <<'PY'
           import json, os

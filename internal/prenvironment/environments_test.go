@@ -228,3 +228,31 @@ func TestMutableImageAndInvalidIdentityAreRejected(t *testing.T) {
 }
 
 func boolPtr(value bool) *bool { return &value }
+
+func TestApplyResourceProfileValidationAndStableDefaults(t *testing.T) {
+	e, _ := fixture(t)
+	r := request()
+	r.SecurityProfile = platformv1.SecurityRestricted
+	r.Resources = &platformv1.ComputeResources{Requests: platformv1.ResourceRequests{CPU: "200m"}}
+	p, err := e.Apply(context.Background(), r)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if p.Spec.SecurityProfile != platformv1.SecurityRestricted || p.Spec.Resources.Requests.CPU != "200m" || p.Spec.Resources.Limits.Memory != "256Mi" || r.Resources.Requests.Memory != "" {
+		t.Fatal("CLI specification lost resource defaults/profile or mutated input")
+	}
+	version := p.ResourceVersion
+	p, err = e.Apply(context.Background(), r)
+	if err != nil || p.ResourceVersion != version {
+		t.Fatalf("repeated resource apply rewrote CR: %v", err)
+	}
+	r.Resources.Limits.CPU = "100m"
+	if _, err := e.Apply(context.Background(), r); err == nil {
+		t.Fatal("request above limit accepted")
+	}
+	r.Resources = nil
+	r.SecurityProfile = "privileged"
+	if _, err := e.Apply(context.Background(), r); err == nil {
+		t.Fatal("privileged profile accepted")
+	}
+}

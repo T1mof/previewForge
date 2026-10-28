@@ -105,6 +105,76 @@ spec:
                 maximum: 10
                 minimum: 1
                 type: integer
+              resources:
+                description: Resources overrides the application container defaults
+                  within preview budgets.
+                properties:
+                  limits:
+                    default: {}
+                    properties:
+                      cpu:
+                        default: 500m
+                        maxLength: 32
+                        type: string
+                        x-kubernetes-validations:
+                        - message: CPU limit must be between 1m and 1
+                          rule: isQuantity(self) && quantity(self).compareTo(quantity('1m'))
+                            >= 0 && quantity(self).compareTo(quantity('1')) <= 0
+                      memory:
+                        default: 256Mi
+                        maxLength: 32
+                        type: string
+                        x-kubernetes-validations:
+                        - message: memory limit must be between 16Mi and 1Gi
+                          rule: isQuantity(self) && quantity(self).compareTo(quantity('16Mi'))
+                            >= 0 && quantity(self).compareTo(quantity('1Gi')) <= 0
+                    type: object
+                  requests:
+                    default: {}
+                    properties:
+                      cpu:
+                        default: 100m
+                        maxLength: 32
+                        type: string
+                        x-kubernetes-validations:
+                        - message: CPU request must be between 1m and 500m
+                          rule: isQuantity(self) && quantity(self).compareTo(quantity('1m'))
+                            >= 0 && quantity(self).compareTo(quantity('500m')) <=
+                            0
+                      memory:
+                        default: 64Mi
+                        maxLength: 32
+                        type: string
+                        x-kubernetes-validations:
+                        - message: memory request must be between 16Mi and 512Mi
+                          rule: isQuantity(self) && quantity(self).compareTo(quantity('16Mi'))
+                            >= 0 && quantity(self).compareTo(quantity('512Mi')) <=
+                            0
+                    type: object
+                type: object
+                x-kubernetes-validations:
+                - message: CPU request must not exceed its limit
+                  rule: '!has(self.requests) || !has(self.limits) || !has(self.requests.cpu)
+                    || !has(self.limits.cpu) || !isQuantity(self.requests.cpu) ||
+                    !isQuantity(self.limits.cpu) || quantity(self.requests.cpu).compareTo(quantity(self.limits.cpu))
+                    <= 0'
+                - message: memory request must not exceed its limit
+                  rule: '!has(self.requests) || !has(self.limits) || !has(self.requests.memory)
+                    || !has(self.limits.memory) || !isQuantity(self.requests.memory)
+                    || !isQuantity(self.limits.memory) || quantity(self.requests.memory).compareTo(quantity(self.limits.memory))
+                    <= 0'
+              securityProfile:
+                default: baseline
+                description: |-
+                  SecurityProfile selects Namespace admission and managed Pod hardening.
+                  Restricted cannot be downgraded through this API.
+                enum:
+                - baseline
+                - restricted
+                type: string
+                x-kubernetes-validations:
+                - message: restricted security profile cannot be downgraded
+                  rule: oldSelf != 'restricted' || self == 'restricted'
               ttlSeconds:
                 default: 3600
                 description: TTLSeconds is measured from metadata.creationTimestamp,

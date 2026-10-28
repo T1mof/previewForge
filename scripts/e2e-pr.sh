@@ -58,7 +58,7 @@ unset token
 pr_name=pr-424242-42
 pr_host=pr-424242-42.pr.example.test
 common=(--kubeconfig "$deployer_config" --context "$context" --repository-id 424242 --pr-number 42 --wait --timeout 3m)
-spec=(--host "$pr_host" --ingress-class previewforge-demo --port 8080 --ttl-seconds 3600)
+spec=(--host "$pr_host" --ingress-class previewforge-demo --port 8080 --ttl-seconds 3600 --security-profile restricted --cpu-request 150m --memory-request 96Mi --cpu-limit 500m --memory-limit 256Mi)
 if "$previewctl" apply "${common[@]}" --source-uid wrong-source --image "$first_image" --revision "$first_revision" "${spec[@]}"; then
   echo 'Wrong source UID was accepted' >&2; exit 1
 fi
@@ -70,8 +70,11 @@ pr_namespace=$(k get previewenvironment "$pr_name" -o jsonpath='{.status.namespa
 pr_created=$(k get previewenvironment "$pr_name" -o jsonpath='{.metadata.creationTimestamp}')
 pr_namespace_uid=$(k get namespace "$pr_namespace" -o jsonpath='{.metadata.uid}')
 pr_http() {
-  local name=$1 revision=$2
-  k -n "$pr_namespace" run "$name" --restart=Never --image=busybox:1.37.0 --command -- sh -ec \
+  local name=$1 revision=$2 overrides
+  printf -v overrides '{"spec":{"automountServiceAccountToken":false,"securityContext":{"runAsNonRoot":true,"runAsUser":65534,"seccompProfile":{"type":"RuntimeDefault"}},"containers":[{"name":"%s","securityContext":{"allowPrivilegeEscalation":false,"capabilities":{"drop":["ALL"]}}}]}}' "$name"
+  k -n "$pr_namespace" run "$name" --restart=Never --image=busybox:1.37.0 \
+    --override-type=strategic --overrides="$overrides" \
+    --command -- sh -ec \
     "for i in \$(seq 1 30); do if wget -q -O /tmp/response -T 5 --header='Host: $pr_host' http://traefik.previewforge-ingress-system.svc.cluster.local && grep -q '$revision' /tmp/response && wget -q -O /tmp/health -T 5 --header='Host: $pr_host' http://traefik.previewforge-ingress-system.svc.cluster.local/healthz && grep -qx ok /tmp/health; then cat /tmp/response /tmp/health; exit 0; fi; sleep 2; done; exit 1"
   if ! k -n "$pr_namespace" wait --for=jsonpath='{.status.phase}'=Succeeded pod/"$name" --timeout=180s; then
     k -n "$pr_namespace" logs "$name" > "$directory/artifacts/pr-http-failure-$name.txt" 2>&1 || true

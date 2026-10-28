@@ -9,7 +9,6 @@ import (
 
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
-	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/intstr"
 	"k8s.io/apimachinery/pkg/util/validation"
@@ -17,6 +16,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 
 	platformv1 "github.com/T1mof/previewForge/api/v1alpha1"
+	"github.com/T1mof/previewForge/internal/policy"
 )
 
 const (
@@ -68,6 +68,13 @@ func normalizedSpec(spec platformv1.PreviewEnvironmentSpec) (platformv1.PreviewE
 	if spec.TTLSeconds < 1 || spec.TTLSeconds > 604800 {
 		return spec, fmt.Errorf("ttlSeconds must be between 1 and 604800")
 	}
+	var err error
+	if spec.Resources, err = policy.NormalizeResources(spec.Resources); err != nil {
+		return spec, err
+	}
+	if spec.SecurityProfile, err = policy.NormalizeProfile(spec.SecurityProfile); err != nil {
+		return spec, err
+	}
 	if spec.Ingress != nil {
 		if net.ParseIP(spec.Ingress.Host) != nil || len(validation.IsDNS1123Subdomain(spec.Ingress.Host)) != 0 {
 			return spec, fmt.Errorf("ingress.host must be an exact DNS hostname")
@@ -114,29 +121,18 @@ func configureDeployment(d *appsv1.Deployment, p *platformv1.PreviewEnvironment,
 		labels[k] = v
 	}
 	d.Spec.Template.Labels = labels
-	no := false
-	d.Spec.Template.Spec.AutomountServiceAccountToken = &no
-	var container corev1.Container
-	// Retain API-defaulted fields so reconciling does not cause perpetual rollouts.
-	for _, c := range d.Spec.Template.Spec.Containers {
-		if c.Name == AppName {
-			container = c
-			break
-		}
-	}
-	container.Name = AppName
-	container.Image = spec.Image
-	container.ImagePullPolicy = corev1.PullIfNotPresent
+	d.Spec.Template.Spec = applicationPodSpec(spec)
+	container := d.Spec.Template.Spec.Containers[0]
 	container.Ports = []corev1.ContainerPort{{Name: "http", ContainerPort: spec.Port, Protocol: corev1.ProtocolTCP}}
-	container.Resources = corev1.ResourceRequirements{
-		Requests: corev1.ResourceList{corev1.ResourceCPU: resource.MustParse("100m"), corev1.ResourceMemory: resource.MustParse("64Mi")},
-		Limits:   corev1.ResourceList{corev1.ResourceCPU: resource.MustParse("500m"), corev1.ResourceMemory: resource.MustParse("256Mi")},
-	}
 	container.ReadinessProbe = &corev1.Probe{
 		ProbeHandler:        corev1.ProbeHandler{TCPSocket: &corev1.TCPSocketAction{Port: intstr.FromString("http")}},
 		InitialDelaySeconds: 2, PeriodSeconds: 5, TimeoutSeconds: 1, SuccessThreshold: 1, FailureThreshold: 3,
 	}
 	d.Spec.Template.Spec.Containers = []corev1.Container{container}
+	surge, unavailable := intstr.FromInt32(1), intstr.FromInt32(0)
+	d.Spec.Strategy = appsv1.DeploymentStrategy{Type: appsv1.RollingUpdateDeploymentStrategyType, RollingUpdate: &appsv1.RollingUpdateDeployment{MaxSurge: &surge, MaxUnavailable: &unavailable}}
+	history := int32(3)
+	d.Spec.RevisionHistoryLimit = &history
 	deadline := int32(120)
 	d.Spec.ProgressDeadlineSeconds = &deadline
 }

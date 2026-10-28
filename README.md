@@ -25,6 +25,7 @@ flowchart LR
 - CRD `platform.previewforge.dev/v1alpha1` с валидацией, значениями по умолчанию и status subresource.
 - Namespace с именем на основе имени и UID CR; проверка controller owner reference перед изменениями.
 - Deployment с CPU/memory requests и limits, TCP readiness probe; Service типа ClusterIP.
+- Настраиваемые CPU/memory, ResourceQuota/LimitRange и профили Pod Security baseline/restricted: [контракт и ограничения](docs/RESOURCE-CONTROLS.md).
 - Необязательный Ingress с явными host/class, ссылкой на TLS Secret и `status.url`; безопасное отключение, исправление drift и watch восстановления.
 - Фазы `Pending`, `Deploying`, `Ready`, `Failed`, `Expired`, condition `Ready`, диагностические сообщения.
 - Исправление управляемых полей, восстановление удалённых ресурсов, повторная обработка ошибок API.

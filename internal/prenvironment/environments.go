@@ -22,6 +22,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	platformv1 "github.com/T1mof/previewForge/api/v1alpha1"
+	"github.com/T1mof/previewForge/internal/policy"
 )
 
 const (
@@ -44,16 +45,18 @@ type Binding struct {
 }
 
 type Request struct {
-	RepositoryID  int64
-	Number        int64
-	Image         string
-	Revision      string
-	Port          int32
-	Replicas      int32
-	TTLSeconds    int64
-	Host          string
-	ClassName     string
-	TLSSecretName string
+	RepositoryID    int64
+	Number          int64
+	Image           string
+	Revision        string
+	Port            int32
+	Replicas        int32
+	TTLSeconds      int64
+	Host            string
+	ClassName       string
+	TLSSecretName   string
+	Resources       *platformv1.ComputeResources
+	SecurityProfile platformv1.SecurityProfile
 }
 
 type Environments struct {
@@ -83,6 +86,15 @@ func (r Request) spec() (platformv1.PreviewEnvironmentSpec, error) {
 		return platformv1.PreviewEnvironmentSpec{}, errors.New("port, replicas or TTL outside PreviewEnvironment API limits")
 	}
 	spec := platformv1.PreviewEnvironmentSpec{Image: r.Image, Port: r.Port, Replicas: &r.Replicas, TTLSeconds: r.TTLSeconds}
+	var err error
+	if spec.SecurityProfile, err = policy.NormalizeProfile(r.SecurityProfile); err != nil {
+		return spec, err
+	}
+	if r.Resources != nil {
+		if spec.Resources, err = policy.NormalizeResources(r.Resources); err != nil {
+			return spec, err
+		}
+	}
 	if r.Host == "" {
 		if r.ClassName != "" || r.TLSSecretName != "" {
 			return spec, errors.New("host is required with an ingress class or TLS Secret")

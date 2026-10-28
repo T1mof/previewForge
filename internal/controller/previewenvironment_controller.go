@@ -38,6 +38,7 @@ type PreviewEnvironmentReconciler struct {
 // +kubebuilder:rbac:groups=platform.previewforge.dev,resources=previewenvironments/finalizers,verbs=update
 // +kubebuilder:rbac:groups="",resources=namespaces,verbs=get;list;watch;create;update;patch;delete
 // +kubebuilder:rbac:groups="",resources=services,verbs=get;list;watch;create;update;patch
+// +kubebuilder:rbac:groups="",resources=resourcequotas;limitranges,verbs=get;list;watch;create;patch
 // +kubebuilder:rbac:groups=apps,resources=deployments,verbs=get;list;watch;create;update;patch
 // +kubebuilder:rbac:groups=networking.k8s.io,resources=ingresses,verbs=get;list;watch;create;patch;delete
 // +kubebuilder:rbac:groups=authentication.k8s.io,resources=tokenreviews,verbs=create
@@ -85,11 +86,24 @@ func (r *PreviewEnvironmentReconciler) Reconcile(ctx context.Context, req ctrl.R
 		}
 	}
 	ns := &corev1.Namespace{ObjectMeta: metav1.ObjectMeta{Name: p.Status.Namespace}}
-	if err := r.ensure(ctx, p, ns, func() { setLabels(ns, p) }); err != nil {
+	if err := r.ensure(ctx, p, ns, func() { configureNamespace(ns, p, spec.SecurityProfile) }); err != nil {
 		return r.failure(ctx, p, "ProvisioningFailed", err)
 	}
 	if !ns.DeletionTimestamp.IsZero() {
 		if err := r.updateStatus(ctx, p, platformv1.PhasePending, "NamespaceTerminating", "waiting for namespace deletion before recreating resources", 0); err != nil {
+			return ctrl.Result{}, err
+		}
+		return ctrl.Result{RequeueAfter: r.nextPoll(deadline.Time)}, nil
+	}
+	if ns.Labels[policyPrefix+"enforce"] != string(spec.SecurityProfile) {
+		return r.failure(ctx, p, "SecurityProfileConflict", fmt.Errorf("namespace is already restricted; set spec.securityProfile=restricted rather than weakening admission"))
+	}
+	guardrailsPending, err := r.reconcileGuardrails(ctx, p, ns.Name)
+	if err != nil {
+		return r.failure(ctx, p, "GuardrailsFailed", err)
+	}
+	if guardrailsPending {
+		if err := r.updateStatus(ctx, p, platformv1.PhaseDeploying, "ResourceTerminating", "waiting for managed quota or LimitRange deletion", 0); err != nil {
 			return ctrl.Result{}, err
 		}
 		return ctrl.Result{RequeueAfter: r.nextPoll(deadline.Time)}, nil
@@ -250,6 +264,8 @@ func (r *PreviewEnvironmentReconciler) SetupWithManager(mgr ctrl.Manager) error 
 		Owns(&corev1.Namespace{}).
 		Owns(&appsv1.Deployment{}).
 		Owns(&corev1.Service{}).
+		Owns(&corev1.ResourceQuota{}).
+		Owns(&corev1.LimitRange{}).
 		Owns(&networkingv1.Ingress{}).
 		WithOptions(controller.Options{MaxConcurrentReconciles: 4}).
 		Complete(r)

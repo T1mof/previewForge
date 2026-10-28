@@ -51,7 +51,7 @@
 ## Этап 3 — Наблюдаемость и эксплуатация
 
 - [x] Предметные inventory metrics из Kubernetes, HTTPS authn/authz endpoint, optional Prometheus/Grafana и dashboard. CI run 40745877197 (743ec4e): 16/16, cleanup и artifact проверены независимо; [отчёт](verification/2026-10-28-metrics.md). Локальный полный monitoring e2e не подтверждён из-за image pull.
-- [ ] ResourceQuota/LimitRange, настраиваемые ресурсы, Pod Security и admission restrictions.
+- [ ] ResourceQuota/LimitRange, настраиваемые ресурсы и Pod Security: реализация и сценарий admission добавлены; до завершения настоящего kind e2e пункт остаётся открытым. [Контракт](RESOURCE-CONTROLS.md).
 - [ ] Helm Chart.
 - [ ] Нагрузочные и отказоустойчивые испытания с опубликованными измерениями.
 - [ ] Больше интеграционных сценариев и поддерживаемая Kubernetes version matrix.

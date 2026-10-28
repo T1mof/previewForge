@@ -34,7 +34,7 @@ bin/previewctl apply \
   --source-uid '<UID подготовленного source Namespace>' \
   --repository-id 123 --pr-number 42 \
   --image 'ghcr.io/owner/repo-preview-app@sha256:<64 hex digits>' \
-  --revision '<полный commit SHA>' --port 8080 \
+  --revision '<полный commit SHA>' --port 8080 --security-profile restricted \
   --host pr-123-42.preview.example.com --ingress-class traefik \
   --ttl-seconds 3600 --wait --timeout 5m
 ```
@@ -42,6 +42,8 @@ bin/previewctl apply \
 `get` и `delete` используют те же явные kubeconfig/context/source UID/repository ID/PR number. `delete --wait` ждёт исчезновения исходной UID CR; новый объект с тем же именем остаётся нетронутым. Finalizer оператора гарантирует ожидание удаления Namespace. CLI выдаёт JSON и не выводит credentials. Отсутствующий или изменённый source Namespace — ошибка, а не успешное «уже удалено».
 
 ## Права и границы доверия
+
+PR example image поддерживает restricted: UID 65532, read-only root filesystem, drop ALL и `/tmp` emptyDir. Workflow явно передаёт этот профиль. CPU/memory можно задать флагами `--cpu-request`, `--memory-request`, `--cpu-limit`, `--memory-limit`; defaults и Namespace budgets описаны в [RESOURCE-CONTROLS.md](RESOURCE-CONTROLS.md). Сохраняйте профиль при повторном apply: API запрещает downgrade restricted.
 
 [config/pr-deployer](../config/pr-deployer/kustomization.yaml) устанавливается отдельно от оператора. ClusterRole генерируется controller-gen из Go markers:
 

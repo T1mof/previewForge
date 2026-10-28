@@ -123,6 +123,7 @@ E2e создаёт новый `previewforge-test-<random>` и используе
 
 - Создание CR, Namespace/Deployment/Service, controller ownerReferences и Ready.
 - Настоящие готовые Pod; при закрытом readiness-порте работающий Pod не переводит CR в Ready, исправление порта завершает rollout.
+- Restricted example с настраиваемыми ресурсами; LimitRange defaults, admission-отказ privileged/oversized/CPU-overquota Pod, восстановление ResourceQuota/LimitRange и cleanup Namespace. Текущий полный report gate требует 17 check ID; результаты прежних suite сохраняют свои исторические counts.
 - Новая UID Deployment после его удаления; исправление drift replicas.
 - Изменение spec при остановленном операторе, актуальная generation и Ready после рестарта.
 - HTTP запросы к Service DNS и ClusterIP из настоящего Pod, ready EndpointSlice и содержимое ответа nginx.

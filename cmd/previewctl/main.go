@@ -42,6 +42,7 @@ func run(ctx context.Context, args []string, output io.Writer) error {
 	var port, replicas int
 	var wait bool
 	var timeout time.Duration
+	var securityProfile, requestCPU, requestMemory, limitCPU, limitMemory string
 	flags.StringVar(&path, "kubeconfig", "", "Explicit kubeconfig path (required)")
 	flags.StringVar(&contextName, "context", "", "Explicit kubeconfig context (required)")
 	flags.StringVar(&sourceName, "source-namespace", prenvironment.DefaultSourceNamespace, "Source Namespace installed by the administrator")
@@ -56,6 +57,11 @@ func run(ctx context.Context, args []string, output io.Writer) error {
 	flags.StringVar(&request.Host, "host", "", "Exact Ingress host; empty keeps the application internal")
 	flags.StringVar(&request.ClassName, "ingress-class", "", "Explicit IngressClass, required with host")
 	flags.StringVar(&request.TLSSecretName, "tls-secret", "", "Separately provisioned TLS Secret in the preview Namespace")
+	flags.StringVar(&securityProfile, "security-profile", "baseline", "baseline or restricted; restricted cannot be downgraded")
+	flags.StringVar(&requestCPU, "cpu-request", "", "Application CPU request (1m to 500m)")
+	flags.StringVar(&requestMemory, "memory-request", "", "Application memory request (16Mi to 512Mi)")
+	flags.StringVar(&limitCPU, "cpu-limit", "", "Application CPU limit (1m to 1)")
+	flags.StringVar(&limitMemory, "memory-limit", "", "Application memory limit (16Mi to 1Gi)")
 	flags.BoolVar(&wait, "wait", false, "Wait for the current rollout or completion of deletion")
 	flags.DurationVar(&timeout, "timeout", 5*time.Minute, "Overall operation timeout")
 	if err := flags.Parse(args[1:]); err != nil {
@@ -71,6 +77,10 @@ func run(ctx context.Context, args []string, output io.Writer) error {
 		return errors.New("invalid timeout, port or replica count")
 	}
 	request.Port, request.Replicas = int32(port), int32(replicas)
+	request.SecurityProfile = platformv1.SecurityProfile(securityProfile)
+	if requestCPU != "" || requestMemory != "" || limitCPU != "" || limitMemory != "" {
+		request.Resources = &platformv1.ComputeResources{Requests: platformv1.ResourceRequests{CPU: requestCPU, Memory: requestMemory}, Limits: platformv1.ResourceLimits{CPU: limitCPU, Memory: limitMemory}}
+	}
 	ctx, cancel := context.WithTimeout(ctx, timeout)
 	defer cancel()
 	raw, err := clientcmd.LoadFromFile(path)

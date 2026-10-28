@@ -27,6 +27,7 @@ finish() {
       k get deployments,pods,services -A -o wide > "$directory/artifacts/workloads.txt" 2>&1 || true
       k get pods -A -o yaml > "$directory/artifacts/pods.yaml" 2>&1 || true
       k get ingresses -A -o yaml > "$directory/artifacts/ingresses.yaml" 2>&1 || true
+      k get resourcequotas,limitranges -A -o yaml > "$directory/artifacts/guardrails.yaml" 2>&1 || true
       k get events -A --sort-by=.lastTimestamp > "$directory/artifacts/events.txt" 2>&1 || true
       k -n previewforge-system logs deployment/previewforge-controller-manager --tail=300 > "$directory/artifacts/operator.log" 2>&1 || true
       k -n previewforge-ingress-system logs deployment/traefik --tail=200 > "$directory/artifacts/traefik.log" 2>&1 || true
@@ -161,6 +162,7 @@ EOF
 }
 # A running container with a closed readiness port must not become CR Ready.
 source scripts/e2e-metrics.sh
+source scripts/e2e-guardrails.sh
 
 create_preview e2e-readiness 3600 81
 readiness_ns=''

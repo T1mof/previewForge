@@ -35,6 +35,54 @@ type PreviewEnvironmentSpec struct {
 	// Ingress exposes the application through an installed Ingress controller.
 	// +optional
 	Ingress *IngressSpec `json:"ingress,omitempty"`
+	// Resources overrides the application container defaults within preview budgets.
+	// +optional
+	Resources *ComputeResources `json:"resources,omitempty"`
+	// SecurityProfile selects Namespace admission and managed Pod hardening.
+	// Restricted cannot be downgraded through this API.
+	// +kubebuilder:default=baseline
+	// +kubebuilder:validation:Enum=baseline;restricted
+	// +kubebuilder:validation:XValidation:rule="oldSelf != 'restricted' || self == 'restricted'",message="restricted security profile cannot be downgraded"
+	SecurityProfile SecurityProfile `json:"securityProfile,omitempty"`
+}
+
+type SecurityProfile string
+
+const (
+	SecurityBaseline   SecurityProfile = "baseline"
+	SecurityRestricted SecurityProfile = "restricted"
+)
+
+// ComputeResources uses Kubernetes quantity strings, not arbitrary extended resources.
+// +kubebuilder:validation:XValidation:rule="!has(self.requests) || !has(self.limits) || !has(self.requests.cpu) || !has(self.limits.cpu) || !isQuantity(self.requests.cpu) || !isQuantity(self.limits.cpu) || quantity(self.requests.cpu).compareTo(quantity(self.limits.cpu)) <= 0",message="CPU request must not exceed its limit"
+// +kubebuilder:validation:XValidation:rule="!has(self.requests) || !has(self.limits) || !has(self.requests.memory) || !has(self.limits.memory) || !isQuantity(self.requests.memory) || !isQuantity(self.limits.memory) || quantity(self.requests.memory).compareTo(quantity(self.limits.memory)) <= 0",message="memory request must not exceed its limit"
+type ComputeResources struct {
+	// +kubebuilder:default={}
+	Requests ResourceRequests `json:"requests,omitempty"`
+	// +kubebuilder:default={}
+	Limits ResourceLimits `json:"limits,omitempty"`
+}
+
+type ResourceRequests struct {
+	// +kubebuilder:default="100m"
+	// +kubebuilder:validation:MaxLength=32
+	// +kubebuilder:validation:XValidation:rule="isQuantity(self) && quantity(self).compareTo(quantity('1m')) >= 0 && quantity(self).compareTo(quantity('500m')) <= 0",message="CPU request must be between 1m and 500m"
+	CPU string `json:"cpu,omitempty"`
+	// +kubebuilder:default="64Mi"
+	// +kubebuilder:validation:MaxLength=32
+	// +kubebuilder:validation:XValidation:rule="isQuantity(self) && quantity(self).compareTo(quantity('16Mi')) >= 0 && quantity(self).compareTo(quantity('512Mi')) <= 0",message="memory request must be between 16Mi and 512Mi"
+	Memory string `json:"memory,omitempty"`
+}
+
+type ResourceLimits struct {
+	// +kubebuilder:default="500m"
+	// +kubebuilder:validation:MaxLength=32
+	// +kubebuilder:validation:XValidation:rule="isQuantity(self) && quantity(self).compareTo(quantity('1m')) >= 0 && quantity(self).compareTo(quantity('1')) <= 0",message="CPU limit must be between 1m and 1"
+	CPU string `json:"cpu,omitempty"`
+	// +kubebuilder:default="256Mi"
+	// +kubebuilder:validation:MaxLength=32
+	// +kubebuilder:validation:XValidation:rule="isQuantity(self) && quantity(self).compareTo(quantity('16Mi')) >= 0 && quantity(self).compareTo(quantity('1Gi')) <= 0",message="memory limit must be between 16Mi and 1Gi"
+	Memory string `json:"memory,omitempty"`
 }
 
 type IngressSpec struct {

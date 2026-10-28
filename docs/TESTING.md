@@ -1,5 +1,13 @@
 # Проверки
 
+## Resource controls и Pod Security — текущая проверка (2026-10-28)
+
+Windows `scripts/check.ps1 -Generate` — **PASS**: controller-gen 0.22.0, gofmt/vet/test/build/Kustomize; покрытие controller 91,4%, policy 100%, prenvironment 80,1%. Linux `scripts/linux-checks.sh` — **PASS**: vet/build/race, envtest 17,66 с / пакет 18,903 с под ServiceAccount RBAC. API server подтвердил вложенные resource defaults, CEL quantity/request≤limit/caps, запрет downgrade restricted, новые права и watch-восстановление/drift repair ResourceQuota/LimitRange. Envtest не доказывает реальную работу quota admission, Pod или GC.
+
+Windows fake isolation 7/7, Bash fake isolation 9/9, cleanup/demo 21/21, synthetic gate 4/4, metadata unit 8/8, ShellCheck/Actionlint/Bash syntax — **PASS**. Первый отдельный вызов fake suite в WSL не нашёл Go в PATH; повтор с portable Go проекта прошёл. Это проверки CLI-изоляции, не Kubernetes e2e.
+
+Сценарий `e2e-guardrails.sh` добавлен в полный suite; gate требует 17 check ID. Настоящий kind-прогон нового сценария пока **NOT RUN**, CI будет зафиксирован отдельным отчётом. Внешний PR workflow остаётся выключенным.
+
 Актуализировано: 2026-10-28. Среда: Windows/amd64, Go 1.26.1; Ubuntu WSL2/Linux amd64, Go 1.26.9 и gcc 13.3. История ниже разделяет локальные проверки и GitHub-hosted kind; этап 1 завершён.
 
 ## Метрики и monitoring demo (2026-10-28)
