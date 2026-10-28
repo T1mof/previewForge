@@ -47,9 +47,9 @@ bin/previewctl apply \
 
 - `get` только Namespace `previewforge-pr-source`.
 - `get/create/patch/delete` PreviewEnvironment.
-- Нет записи Namespace, Deployments/Pods, Secrets, status/finalizers, RBAC.
+- Нет записи Namespace, Deployments/Pods, Secrets, status subresource или RBAC; отдельные права `/finalizers` не выдаются.
 
-Kubernetes RBAC не ограничивает PreviewEnvironment по owner UID: owner-проверки реализует CLI. Скомпрометированный deployer token может обойти CLI, поэтому требуется отдельный demo-кластер без production credentials/ценных данных. Пользователи с правом изменять доверенные workflow считаются доверенными к preview-доступу. GitHub Environment `preview` позволяет дополнительно включить reviewers и branch restrictions.
+Kubernetes RBAC не ограничивает PreviewEnvironment по owner UID: owner-проверки реализует CLI. Право patch основного CR также позволяет менять metadata, включая finalizers; отсутствие отдельного `/finalizers` permission не защищает их от прямого patch. CLI finalizers не изменяет. Скомпрометированный deployer token может обойти CLI, поэтому требуется отдельный demo-кластер без production credentials/ценных данных. Пользователи с правом изменять доверенные workflow считаются доверенными к preview-доступу. GitHub Environment `preview` позволяет дополнительно включить reviewers и branch restrictions.
 
 Fork PR и авторы вне OWNER/MEMBER/COLLABORATOR пропускаются; `pull_request_target` не используется. Build job имеет packages write, но не подключает Environment с кластерным Secret. Deploy job использует CLI и скрипт проверки из **base commit**, перечитывает live PR state/head через GitHub API и пропускает устаревший build или прежнее close после reopen. Общая per-PR concurrency не прерывает активную операцию. Между GitHub и Kubernetes нет атомарной транзакции: события обеспечивают повторное согласование, TTL остаётся ограничением времени жизни при потерянном close/ошибке CI.
 

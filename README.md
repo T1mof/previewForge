@@ -105,11 +105,15 @@ PowerShell-скрипт при необходимости установит kin
 make test-e2e
 ```
 
+Полный e2e дополнительно требует Python 3 для проверки image metadata. `make build` собирает manager и `previewctl`; в Git Bash предварительно соберите `bin/previewctl.exe`, как показано в [VERIFICATION.md](docs/VERIFICATION.md).
+
 Он проверяет настоящие Ready/Pod и HTTP через Service DNS/ClusterIP, запрет Ready до готовности приложения, исправление replicas, восстановление Deployment, рестарт, TTL при работающем операторе и после простоя, удержание finalizer и отказ изменения/удаления чужих ресурсов. E2e сохраняет диагностику в `bin/runs/<cluster>/artifacts`, затем удаляет только созданный им кластер, в том числе при ошибке. Demo для ручной работы сохраняет кластер.
 
 В Windows полный e2e также можно запустить через Git Bash без WSL Integration; команды приведены в [VERIFICATION.md](docs/VERIFICATION.md#полный-e2e-в-git-bash-без-wsl-integration).
 
 Ingress подтверждён [CI с 14 проверками](https://github.com/T1mof/previewForge/actions/runs/40582139866); [отчёт](docs/verification/2026-10-28-ingress.md) содержит source SHA и artifact digest.
+
+Подготовка PR-интеграции подтверждена [CI с 15 проверками](https://github.com/T1mof/previewForge/actions/runs/40640242526) и независимой проверкой artifact: [отчёт](docs/verification/2026-10-28-pr-integration.md). Внешний PR workflow выключен; fixture metadata в kind не заменяет будущую проверку настоящих PR в отдельном кластере.
 
 Демонстрация приложения в браузере: `make ingress-demo` или `bash scripts/ingress-demo.sh` из настроенного Git Bash. Новый локальный kind получает loopback listener и настоящий Traefik; скрипт проверяет HTTP и оставляет кластер для работы. По умолчанию URL — `http://localhost:8080`. [Инструкция и cleanup](docs/INGRESS.md#локальный-demo).
 

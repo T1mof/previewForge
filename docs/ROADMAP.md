@@ -41,6 +41,8 @@
 - [x] Локальный демонстрационный kind с Traefik и настоящим HTTP на http://localhost:8080; приложение demo b затем удалено по часовому TTL (CR и Namespace NotFound).
 - [x] CI Ingress подтверждён: run 40582139866, commit 8082fab, оба job SUCCESS, 14/14 e2e, cleanup и скачанный artifact проверены; [отчёт](verification/2026-10-28-ingress.md).
 - [x] Подготовлена выключенная по умолчанию PR-интеграция, CLI и установочные RBAC manifests. [Инструкция](PR-INTEGRATION.md). Площадка/домен и включение живых PR-ссылок выбираются позже; пользовательский или production кластер не используется.
+- [x] PR-компоненты проверены в новом локальном kind: 15/15 e2e, cleanup/report gate PASS; две image revision по HTTP, ограниченный SA, update и idempotent close. GitHub metadata здесь fixture.
+- [x] CI PR-подготовки подтверждён: run 40640242526, commit ad72829, оба job SUCCESS, 15/15 и cleanup; artifact скачан и проверен независимо. [Отчёт](verification/2026-10-28-pr-integration.md).
 - [ ] После выбора площадки: активировать workflow и подтвердить настоящий GitHub PR create/update/HTTP/close. Fixture metadata в локальном kind этот пункт не закрывает.
 - [ ] Политики сетевой изоляции и ограничения доступа к API.
 
