@@ -4,6 +4,8 @@
 
 ## Подготовка PR-интеграции (2026-10-28)
 
+После deadline demo c отдельно подтверждены NotFound CR `pr-42` и HTTP 404. Пустой `previewforge-test-demo-20261028-c` затем удалён через claim/token cleanup, отсутствие kind-кластера подтверждено. Это сохранённый результат предыдущей демонстрации; активной localhost-ссылки после TTL нет.
+
 Итоговый CI [run 40640242526](https://github.com/T1mof/previewForge/actions/runs/40640242526), commit `ad728297b367d6316995d8ad6642fbe1c5cc6baa`: оба job **SUCCESS**, e2e **15/15**, cleanup/report gate PASS. Скачанный artifact проверен отдельно по SHA256, commit, всем check ID, обеим HTTP revision/health и удалению кластера. Linux race example 1,011 с, controller 3,059 с, prenvironment 1,810 с; envtest 8,80 с / пакет 9,851 с. [Отчёт с artifact ID и digest](verification/2026-10-28-pr-integration.md). Внешний PR lifecycle остаётся NOT RUN.
 
 Свежее локальное demo `previewforge-test-demo-20261028-c`: **PASS**, настоящий HTTP с Windows-хоста через Traefik на `http://localhost:8080`; кластер оставлен для просмотра. Приложение создано 05:57:25 UTC, TTL deadline 06:57:25 UTC / 09:57:25 МСК 2026-10-28. Kubeconfig — `bin/runs/previewforge-test-demo-20261028-c/kubeconfig`, context — `kind-previewforge-test-demo-20261028-c`. Старое demo b после истечения TTL удалено штатным cleanup с сохранённым claim/token; пользовательский kubeconfig не менялся.
