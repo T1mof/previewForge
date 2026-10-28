@@ -2,9 +2,13 @@
 
 ## Метрики и monitoring demo (2026-10-28)
 
+Первый CI [run 40742463045](https://github.com/T1mof/previewForge/actions/runs/40742463045), `9ae0222`: Linux job **SUCCESS**, kind job **FAIL**, cleanup **PASS**. Prometheus/Grafana Pod запустились; HTTPS 401/403, разрешённый scrape и inventory create/restart/delete прошли. `promtool check config` завершился успешно, но rule unit tests потребовали writable `/tmp` при read-only root filesystem. Добавлен отдельный ограниченный emptyDir 64Mi; полный monitoring check этим первым CI не подтверждён.
+
 Windows `scripts/check.ps1 -Generate`: **PASS**, controller-gen 0.22.0, gofmt/vet/test, сборка manager/CLI и Kustomize. Monitoring collector — 95,7% coverage, controller — 92,0%. Linux vet/build/race/envtest: **PASS**; race example 1,126 с, controller 3,244 с, monitoring 1,845 с, prenvironment 1,989 с; envtest 19,34 с / пакет 20,574 с. Envtest проверил обновлённый operator ServiceAccount RBAC, включая разрешения TokenReview/SubjectAccessReview; настоящую HTTPS auth проверяет отдельный kind-сценарий.
 
 Metadata tests 8/8, Bash isolation 9/9, fake cleanup/demo 21/21, synthetic report gate 4/4 и ShellCheck/Actionlint — **PASS**. Gate расширен до 16 check ID; синтетические отчёты не считаются Kubernetes e2e. Kustomize monitoring demo — **PASS**.
+
+После изменения initial Ready timeout повторены Windows isolation 7/7, Bash 9/9, cleanup/demo 21/21, gate 4/4 и lint — **PASS**. Третья локальная попытка c: **FAIL** до metrics check; nginx оставался в ContainerCreating/Pulling всё пятиминутное окно. **Cleanup PASS**. Локальный monitoring e2e на этом этапе не подтверждён; системные proxy/Docker/WSL настройки не менялись.
 
 Первый kind `previewforge-test-metrics-20261028-a`: **FAIL** до metrics check, первоначальный CR не достиг Ready. В events — nginx ImagePullBackOff после TLS handshake timeout при запросе anonymous Docker Hub token; также были рестарты control plane во время cold build. Operator запустился и создал дочерние ресурсы. **Cleanup PASS**, отсутствие кластера подтверждено. Повтор b также **FAIL** до metrics check: nginx скачался за 2 минуты 53 секунды, контейнеры запустились за несколько секунд до исходного трёхминутного timeout. **Cleanup PASS**. Окно первого cold Ready в Bash/PowerShell увеличено до 300 секунд; критерий Ready сохранён. Эти запуски monitoring не подтверждают; итоговый прогон фиксируется отдельно.
 

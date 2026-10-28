@@ -57,11 +57,14 @@ spec:
           volumeMounts:
             - {name: config, mountPath: /etc/prometheus, readOnly: true}
             - {name: data, mountPath: /prometheus}
+            - {name: tmp, mountPath: /tmp}
       volumes:
         - name: config
           configMap: {name: previewforge-prometheus-config}
         - name: data
           emptyDir: {sizeLimit: 256Mi}
+        - name: tmp
+          emptyDir: {sizeLimit: 64Mi}
 ---
 apiVersion: v1
 kind: Service
