@@ -1,6 +1,10 @@
 # Проверки
 
+Актуализировано: 2026-10-28. Среда: Windows/amd64, Go 1.26.1; Ubuntu WSL2/Linux amd64, Go 1.26.9 и gcc 13.3. История ниже разделяет локальные проверки и GitHub-hosted kind; этап 1 завершён.
+
 ## Метрики и monitoring demo (2026-10-28)
+
+Итоговый CI [run 40745877197](https://github.com/T1mof/previewForge/actions/runs/40745877197), commit `743ec4ec3dac07ba175863023dfe0cd3a7c688a2`: оба job **SUCCESS**, настоящий kind **16/16**, cleanup/report gate PASS. Скачанный artifact независимо проверен по SHA256, source SHA, всем check ID, HTTPS 401/403, inventory 2→3→3→2, Prometheus query/target, Grafana provisioning и девяти запросам панелей. Linux race controller 2,874 с / monitoring 1,798 с; envtest 6,99 с / пакет 8,037 с. [Отчёт с artifact ID и digest](verification/2026-10-28-metrics.md). Локальные cold-pull отказы ниже не считаются успешным monitoring e2e.
 
 Первый CI [run 40742463045](https://github.com/T1mof/previewForge/actions/runs/40742463045), `9ae0222`: Linux job **SUCCESS**, kind job **FAIL**, cleanup **PASS**. Prometheus/Grafana Pod запустились; HTTPS 401/403, разрешённый scrape и inventory create/restart/delete прошли. `promtool check config` завершился успешно, но rule unit tests потребовали writable `/tmp` при read-only root filesystem. Добавлен отдельный ограниченный emptyDir 64Mi; полный monitoring check этим первым CI не подтверждён.
 
@@ -12,7 +16,6 @@ Metadata tests 8/8, Bash isolation 9/9, fake cleanup/demo 21/21, synthetic repor
 
 Первый kind `previewforge-test-metrics-20261028-a`: **FAIL** до metrics check, первоначальный CR не достиг Ready. В events — nginx ImagePullBackOff после TLS handshake timeout при запросе anonymous Docker Hub token; также были рестарты control plane во время cold build. Operator запустился и создал дочерние ресурсы. **Cleanup PASS**, отсутствие кластера подтверждено. Повтор b также **FAIL** до metrics check: nginx скачался за 2 минуты 53 секунды, контейнеры запустились за несколько секунд до исходного трёхминутного timeout. **Cleanup PASS**. Окно первого cold Ready в Bash/PowerShell увеличено до 300 секунд; критерий Ready сохранён. Эти запуски monitoring не подтверждают; итоговый прогон фиксируется отдельно.
 
-Актуализировано: 2026-10-28. Среда: Windows/amd64, Go 1.26.1; Ubuntu WSL2/Linux amd64, Go 1.26.9 и gcc 13.3. Локальный Kubernetes e2e и GitHub workflow подтверждены; этап 1 завершён.
 
 ## Подготовка PR-интеграции (2026-10-28)
 

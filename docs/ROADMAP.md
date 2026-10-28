@@ -50,10 +50,10 @@
 
 ## Этап 3 — Наблюдаемость и эксплуатация
 
-- [ ] Предметные Prometheus metrics, защищённый scrape endpoint, Grafana dashboard.
+- [x] Предметные inventory metrics из Kubernetes, HTTPS authn/authz endpoint, optional Prometheus/Grafana и dashboard. CI run 40745877197 (743ec4e): 16/16, cleanup и artifact проверены независимо; [отчёт](verification/2026-10-28-metrics.md). Локальный полный monitoring e2e не подтверждён из-за image pull.
 - [ ] ResourceQuota/LimitRange, настраиваемые ресурсы, Pod Security и admission restrictions.
 - [ ] Helm Chart.
 - [ ] Нагрузочные и отказоустойчивые испытания с опубликованными измерениями.
 - [ ] Больше интеграционных сценариев и поддерживаемая Kubernetes version matrix.
 
-Requests/limits контейнера уже заданы в этапе 1. Реализованы inventory collector из Kubernetes и защищённый HTTPS endpoint в default manifests; optional Prometheus/Grafana demo и e2e описаны в [OBSERVABILITY.md](OBSERVABILITY.md). Приёмка metrics/monitoring отмечается после настоящего kind и CI; запуск процесса вне manifests оставляет metrics выключенными по умолчанию.
+Requests/limits контейнера уже заданы в этапе 1. Inventory collector и защищённый HTTPS endpoint подтверждены GitHub-hosted kind; optional Prometheus/Grafana demo описан в [OBSERVABILITY.md](OBSERVABILITY.md). При запуске процесса вне manifests metrics по умолчанию выключены. Следующая работа — ограничения ресурсов и изоляция; внешняя PR-активация остаётся отдельным отложенным шагом.

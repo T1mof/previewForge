@@ -43,6 +43,7 @@ Prometheus использует projected ServiceAccount token из файла, 
 Для ручного просмотра сначала создайте **новый** кластер через `make kind-demo` или штатный Git Bash demo. Из корня проекта, в Bash:
 
 ```bash
+set -euo pipefail
 task_context=$(kubectl --kubeconfig "$PWD/bin/kind.kubeconfig" config current-context)
 case "$task_context" in kind-previewforge-test-*) ;; *) exit 1 ;; esac
 task_cluster=${task_context#kind-}
