@@ -72,8 +72,11 @@ pr_namespace_uid=$(k get namespace "$pr_namespace" -o jsonpath='{.metadata.uid}'
 pr_http() {
   local name=$1 revision=$2
   k -n "$pr_namespace" run "$name" --restart=Never --image=busybox:1.37.0 --command -- sh -ec \
-    "for i in \$(seq 1 30); do if wget -q -O /tmp/response -T 5 --header='Host: $pr_host' http://traefik.previewforge-ingress-system.svc.cluster.local && grep -q '$revision' /tmp/response; then cat /tmp/response; wget -q -O- -T 5 --header='Host: $pr_host' http://traefik.previewforge-ingress-system.svc.cluster.local/healthz; exit 0; fi; sleep 2; done; exit 1"
-  k -n "$pr_namespace" wait --for=jsonpath='{.status.phase}'=Succeeded pod/"$name" --timeout=120s
+    "for i in \$(seq 1 30); do if wget -q -O /tmp/response -T 5 --header='Host: $pr_host' http://traefik.previewforge-ingress-system.svc.cluster.local && grep -q '$revision' /tmp/response && wget -q -O /tmp/health -T 5 --header='Host: $pr_host' http://traefik.previewforge-ingress-system.svc.cluster.local/healthz && grep -qx ok /tmp/health; then cat /tmp/response /tmp/health; exit 0; fi; sleep 2; done; exit 1"
+  if ! k -n "$pr_namespace" wait --for=jsonpath='{.status.phase}'=Succeeded pod/"$name" --timeout=180s; then
+    k -n "$pr_namespace" logs "$name" > "$directory/artifacts/pr-http-failure-$name.txt" 2>&1 || true
+    return 1
+  fi
   k -n "$pr_namespace" logs "$name" >> "$directory/artifacts/pr-http.txt"
 }
 pr_http pr-first "$first_revision"

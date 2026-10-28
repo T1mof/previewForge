@@ -10,6 +10,10 @@ Metadata helper: 8 unit-сценариев — **PASS** (актуальный he
 
 Первый настоящий локальный PR e2e `previewforge-test-pr-20261028-a`: **FAIL** при разборе image digest после успешного Ingress. Containerd присвоил repository `import-*`; проверка ошибочно ожидала исходное Docker имя. **Cleanup PASS**. Повтор b: **FAIL** по timeout rollout, служебный repoDigest не разрешается kubelet локально; **cleanup PASS**. Итоговый скрипт получает OCI target digest точного загруженного tag из containerd и регистрирует явную `repository@sha256` ссылку; config ID не используется как manifest digest.
 
+Прогон `previewforge-test-pr-20261028-c`: **FAIL** по timeout первоначального rollout оператора, до PR-сценария. Pod запустился лишь к завершению двухминутного ожидания; контроллер затем начал работу, но это не успешный suite. **Cleanup PASS**. После удаления истёкшего demo b запускается отдельная новая попытка; системные Docker/WSL настройки не менялись.
+
+Первый CI PR-подготовки [run 40592109298](https://github.com/T1mof/previewForge/actions/runs/40592109298), `f5ed8c3`: Linux job **SUCCESS**, kind job **FAIL**, cleanup **PASS**. Реальные create и update завершились Ready с generation 1/2 и той же UID/Namespace; Pod получил правильную вторую revision, но следующий отдельный `/healthz` запрос завершился timeout. Retry охватывал только `/`, поэтому тест завершился на первом сбое health-запроса. Исправлено совместное ожидание обоих HTTP-ответов и добавлен отдельный failure log. Это не успешный e2e; итоговый прогон фиксируется отдельно.
+
 ## CI Ingress (2026-10-28)
 
 [Run 40582139866](https://github.com/T1mof/previewForge/actions/runs/40582139866), commit `8082fab040df8ef79b62f19c82f877caf7e1027f`: оба job **SUCCESS**, e2e **14/14**, cleanup/report gate PASS. Скачанный artifact независимо проверен по digest, commit, всем check ID, HTTP и удалению кластера. Linux race 3,852 с; envtest 8,93 с / пакет 9,993 с. [Отчёт с artifact ID и SHA256](verification/2026-10-28-ingress.md).
