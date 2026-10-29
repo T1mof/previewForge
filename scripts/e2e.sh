@@ -152,6 +152,7 @@ record_check http 'real smoke Pod received application HTTP through Service DNS 
 # Optional API exposure is tested with a real Ingress controller in this run only.
 source scripts/e2e-ingress.sh
 source scripts/e2e-pr.sh
+source scripts/e2e-admission.sh
 
 create_preview() {
   local name=$1 ttl=$2 port=${3:-80}
@@ -170,7 +171,6 @@ EOF
 source scripts/e2e-metrics.sh
 source scripts/e2e-guardrails.sh
 source scripts/e2e-network.sh
-source scripts/e2e-admission.sh
 
 create_preview e2e-readiness 3600 81
 readiness_ns=''

@@ -18,6 +18,10 @@ def main():
     results = []
 
     def run(args, obj=None, op=False):
+        # Client-side OpenAPI fallback may list CRDs under impersonation. The
+        # apiserver still validates the schema and runs admission normally.
+        if obj is not None and ("create" in args or "replace" in args):
+            args = args + ["--validate=false"]
         return subprocess.run(base + (operator if op else []) + args,
                               input=json.dumps(obj) if obj is not None else None,
                               text=True, capture_output=True, check=False)
