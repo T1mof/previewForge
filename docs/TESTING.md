@@ -4,13 +4,15 @@
 
 ## NetworkPolicy — текущая проверка (2026-10-29)
 
+Итоговый [CI run 40915413741](https://github.com/T1mof/previewForge/actions/runs/40915413741), source `cfb3946a588bf22aa514d2e4b6ae059606f5e965`: оба job **SUCCESS**, настоящий Calico suite **18/18**, cleanup/report gate **PASS**. Скачанный artifact `12916698603`, SHA256 `0d1ab4a99b52fd6518d865a95f8f8281d0abefb50d3d6e135d7a24b60479a9f5` совпал с API. Независимо проверены 21 allowed/17 denied probe JSON, десять network подпроверок, peers/ports/owner UID/new UID/revoke и Namespace/cluster cleanup. CI race controller 6,135 с, probe 1,029 с; envtest 10,58 с / пакет 11,674 с. [Отчёт и границы доказательств](verification/2026-10-29-network-isolation.md).
+
 Windows generation/controller-gen 0.22.0, gofmt/vet/test/build — **PASS**, controller 92,7%. Linux vet/build/race — **PASS**; controller 4,374 с, probe 1,131 с. Envtest под manifest ServiceAccount RBAC — **PASS**, 18,31 с / пакет 19,542 с: реальные NetworkPolicy UID/watch/recreation, drift и create/patch allow, delete deny. Это проверка API, не dataplane.
 
 Предварительный новый `previewforge-test-calico-20261029-a` подтвердил запуск Calico 3.33.0, CoreDNS, оператора и nginx Ready с двумя репликами. Кластер удалён, `cleanup.txt` PASS. PowerShell-обёртка с native stderr redirection вернула 1; полного e2e/enforcement в этом запуске не было. Дальнейший runner пишет UTF-8 log внутри Bash и сохраняет настоящий exit code suite.
 
 Первый CI [run 40904321044](https://github.com/T1mof/previewForge/actions/runs/40904321044), source `b341df1`: Linux job **SUCCESS**, kind job **FAIL**, cleanup **PASS**. На настоящем Calico прошли lifecycle, HTTP, Ingress, PR, metrics и resource controls; сетевой check не начался, потому что root `.dockerignore` исключал `test/e2e/probe` из build context. Исключение удалено. Это не успешный enforcement suite; gate 18 остаётся обязательным.
 
-Локальный `previewforge-test-network-20261029-b` прервался до появления kubeconfig, доступный log не содержит результатов. При разборе Docker Engine был недоступен. Проверка такого запуска не считается PASS; прежний claim сохраняется до подтверждённой exact-name очистки, для повтора нужен новый кластер. Контракт — в [NETWORK-ISOLATION.md](NETWORK-ISOLATION.md). Внешний PR workflow выключен.
+Локальный `previewforge-test-network-20261029-b` прервался до появления kubeconfig, доступный log не содержит результатов. При разборе Docker Engine был недоступен; установленный Docker Desktop запущен в фоне без изменения настроек. Файлы `.docker-endpoint`/`.docker-host` заполнены NUL, поэтому cleanup отказался подтверждать совпадение endpoint. Guard не обходился; пользовательское решение об exact-name удалении этого кластера ожидается отдельно. Локальный полный 18/18 и cleanup b не считаются PASS. Контракт — в [NETWORK-ISOLATION.md](NETWORK-ISOLATION.md). Внешний PR workflow выключен.
 
 ## Resource controls и Pod Security — текущая проверка (2026-10-29)
 
@@ -216,7 +218,7 @@ make test-e2e
 
 ## Оставшиеся риски и неподтверждённые сценарии
 
-Подробный анализ широких RBAC-прав (включая косвенный доступ через workload creation), сетевой изоляции/CNI и удаления всего содержимого управляемого Namespace с минимальными практическими мерами — в [SECURITY.md](SECURITY.md). Предложения admission/NetworkPolicy пока не реализованы и не считаются проверенной защитой.
+Подробный анализ широких RBAC-прав (включая косвенный доступ через workload creation), сетевой изоляции/CNI и удаления всего содержимого управляемого Namespace — в [SECURITY.md](SECURITY.md). NetworkPolicy добавлены после этапа 1 и подтверждены CI 18/18 на Calico; [актуальный отчёт](verification/2026-10-29-network-isolation.md). Дополнительные admission-ограничения cluster-wide прав пока не реализованы.
 
 - Локальный Bash e2e подтвердил Ready, HTTP/DNS/Service routing, восстановление Deployment, рестарт in-cluster manager и окончание Namespace GC. Запуск того же workflow на GitHub-hosted runner ещё не выполнен.
 - PowerShell demo не выполнялся полностью в Docker/kind; настоящий lifecycle подтверждён Bash e2e через Git Bash.

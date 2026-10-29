@@ -44,7 +44,7 @@
 - [x] PR-компоненты проверены в новом локальном kind: 15/15 e2e, cleanup/report gate PASS; две image revision по HTTP, ограниченный SA, update и idempotent close. GitHub metadata здесь fixture.
 - [x] CI PR-подготовки подтверждён: run 40640242526, commit ad72829, оба job SUCCESS, 15/15 и cleanup; artifact скачан и проверен независимо. [Отчёт](verification/2026-10-28-pr-integration.md).
 - [ ] После выбора площадки: активировать workflow и подтвердить настоящий GitHub PR create/update/HTTP/close. Fixture metadata в локальном kind этот пункт не закрывает.
-- [ ] NetworkPolicy для namespace isolation, DNS и gateway: код, unit/envtest и Calico e2e добавлены; пункт остаётся открытым до настоящего enforcement 18/18. [Контракт](NETWORK-ISOLATION.md).
+- [x] NetworkPolicy для namespace isolation, DNS и gateway: CI 40915413741 / cfb3946, 18/18 на Calico 3.33.0, cleanup и artifact 12916698603 проверены независимо. Подтверждены 21 positive/17 denied probes, policy UID/watch/restart и отзыв gateway. [Контракт](NETWORK-ISOLATION.md), [отчёт](verification/2026-10-29-network-isolation.md). Локальный полный 18/18 не заявляется.
 - [ ] Дополнительные ограничения cluster-wide доступа оператора к API/admission; NetworkPolicy не заменяет их.
 
 Базовые drift repair, ownership и optimistic locking включены в этап 1, поскольку нужны для корректного reconcile.
@@ -57,4 +57,4 @@
 - [ ] Нагрузочные и отказоустойчивые испытания с опубликованными измерениями.
 - [ ] Больше интеграционных сценариев и поддерживаемая Kubernetes version matrix.
 
-Inventory collector и защищённый HTTPS endpoint подтверждены GitHub-hosted kind; optional Prometheus/Grafana demo описан в [OBSERVABILITY.md](OBSERVABILITY.md). При запуске процесса вне manifests metrics по умолчанию выключены. ResourceQuota/LimitRange и PSA подтверждены отдельным admission e2e. Следующая работа — NetworkPolicy с проверкой на исполняющем её CNI и дополнительные ограничения доступа; внешняя PR-активация остаётся отложенным шагом.
+Inventory collector и защищённый HTTPS endpoint подтверждены GitHub-hosted kind; optional Prometheus/Grafana demo описан в [OBSERVABILITY.md](OBSERVABILITY.md). При запуске процесса вне manifests metrics по умолчанию выключены. ResourceQuota/LimitRange/PSA и NetworkPolicy подтверждены настоящими admission/dataplane e2e. Следующая работа — дополнительные ограничения cluster-wide доступа оператора, упаковка и эксплуатационные испытания; внешняя PR-активация остаётся отложенным шагом.
