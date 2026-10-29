@@ -152,7 +152,19 @@ def main():
     finally:
         ok(["-n", "previewforge-system", "scale", "deployment/previewforge-admission", "--replicas=1"])
         ok(["-n", "previewforge-system", "rollout", "status", "deployment/previewforge-admission", "--timeout=120s"])
-    ok(["replace", "--dry-run=server", "-f", "-"], service, op=True)
+    # Pod Ready precedes EndpointSlice/kube-proxy convergence. Retry only
+    # transport failures from this webhook, never a policy/ownership denial.
+    recovery = []
+    deadline = time.monotonic() + 60
+    while True:
+        result = run(["replace", "--dry-run=server", "-f", "-"], service, op=True)
+        recovery.append({"returncode": result.returncode, "stderr": result.stderr})
+        if result.returncode == 0:
+            break
+        if 'failed calling webhook "ownership.platform.previewforge.dev"' not in result.stderr or time.monotonic() >= deadline:
+            raise AssertionError("Webhook recovery failed: " + result.stderr)
+        time.sleep(1)
+    (output / "admission-recovery.json").write_text(json.dumps(recovery, indent=2), encoding="utf-8")
     ok(["delete", "namespace", temp_name, "--wait=false"], op=True)
     ok(["delete", "namespace", foreign_name, "--wait=false"])
     for name in (temp_name, foreign_name):
