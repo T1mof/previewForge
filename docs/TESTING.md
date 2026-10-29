@@ -8,7 +8,9 @@ Windows generation/controller-gen 0.22.0, gofmt/vet/test/build — **PASS**, con
 
 Предварительный новый `previewforge-test-calico-20261029-a` подтвердил запуск Calico 3.33.0, CoreDNS, оператора и nginx Ready с двумя репликами. Кластер удалён, `cleanup.txt` PASS. PowerShell-обёртка с native stderr redirection вернула 1; полного e2e/enforcement в этом запуске не было. Дальнейший runner пишет UTF-8 log внутри Bash и сохраняет настоящий exit code suite.
 
-Новый `e2e-network.sh` и gate 18 добавлены, настоящий полный сетевой e2e пока **NOT RUN**. Наличие NetworkPolicy в API и успешный bootstrap Calico не считаются доказательством блокировки. Контракт — в [NETWORK-ISOLATION.md](NETWORK-ISOLATION.md). Внешний PR workflow выключен.
+Первый CI [run 40904321044](https://github.com/T1mof/previewForge/actions/runs/40904321044), source `b341df1`: Linux job **SUCCESS**, kind job **FAIL**, cleanup **PASS**. На настоящем Calico прошли lifecycle, HTTP, Ingress, PR, metrics и resource controls; сетевой check не начался, потому что root `.dockerignore` исключал `test/e2e/probe` из build context. Исключение удалено. Это не успешный enforcement suite; gate 18 остаётся обязательным.
+
+Локальный `previewforge-test-network-20261029-b` прервался до появления kubeconfig, доступный log не содержит результатов. При разборе Docker Engine был недоступен. Проверка такого запуска не считается PASS; прежний claim сохраняется до подтверждённой exact-name очистки, для повтора нужен новый кластер. Контракт — в [NETWORK-ISOLATION.md](NETWORK-ISOLATION.md). Внешний PR workflow выключен.
 
 ## Resource controls и Pod Security — текущая проверка (2026-10-29)
 
