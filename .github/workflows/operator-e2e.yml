@@ -86,6 +86,7 @@ jobs:
           export GOCACHE="$PWD/.cache/linux/go-build"
           GOBIN="$PWD/bin/linux" go install sigs.k8s.io/kind@v0.33.0
           go build -trimpath -o bin/linux/previewctl ./cmd/previewctl
+          go build -trimpath -o bin/linux/admissioncert ./cmd/admissioncert
           curl --fail --location --retry 3 -o bin/linux/kubectl https://dl.k8s.io/release/v1.37.0/bin/linux/amd64/kubectl
           checksum=$(curl --fail --location --retry 3 https://dl.k8s.io/release/v1.37.0/bin/linux/amd64/kubectl.sha256)
           printf '%s  bin/linux/kubectl\n' "$checksum" | sha256sum --check
