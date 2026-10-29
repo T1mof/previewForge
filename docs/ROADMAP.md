@@ -1,6 +1,6 @@
 # Roadmap
 
-Обновлено: 2026-10-28. Исходное [ТЗ](SPECIFICATION.md) сохранено без изменений. Этап 1 завершён: локальный kind и GitHub run 40576650171 подтверждены. Проверенный commit, все 13 результатов и cleanup зафиксированы в [отчёте CI](verification/2026-10-27-stage1.md). Ingress/demo также подтверждены; подготовлена выключенная PR-интеграция для будущего отдельного кластера.
+Обновлено: 2026-10-29. Исходное [ТЗ](SPECIFICATION.md) сохранено без изменений. Этап 1 завершён: локальный kind и GitHub run 40576650171 подтверждены. Проверенный commit, все 13 результатов и cleanup зафиксированы в [отчёте CI](verification/2026-10-27-stage1.md). Ingress/demo также подтверждены; подготовлена выключенная PR-интеграция для будущего отдельного кластера.
 
 ## Этап 1 — Рабочий Kubernetes Operator
 
@@ -50,10 +50,10 @@
 
 ## Этап 3 — Наблюдаемость и эксплуатация
 
-- [x] Предметные inventory metrics из Kubernetes, HTTPS authn/authz endpoint, optional Prometheus/Grafana и dashboard. CI run 40745877197 (743ec4e): 16/16, cleanup и artifact проверены независимо; [отчёт](verification/2026-10-28-metrics.md). Локальный полный monitoring e2e не подтверждён из-за image pull.
-- [ ] ResourceQuota/LimitRange, настраиваемые ресурсы и Pod Security: реализация и сценарий admission добавлены; до завершения настоящего kind e2e пункт остаётся открытым. [Контракт](RESOURCE-CONTROLS.md).
+- [x] Предметные inventory metrics из Kubernetes, HTTPS authn/authz endpoint, optional Prometheus/Grafana и dashboard. CI run 40745877197 (743ec4e): 16/16, cleanup и artifact проверены независимо; [отчёт](verification/2026-10-28-metrics.md). Полный monitoring также прошёл локально 2026-10-29 внутри suite 17/17 после исправления Git Bash paths/CRLF; [новый отчёт](verification/2026-10-29-resource-controls.md).
+- [x] ResourceQuota/LimitRange, настраиваемые CPU/memory и Pod Security baseline/restricted. Итоговый CI 40890879045, commit b5343c9: 17/17, настоящий admission и cleanup; artifact скачан и проверен независимо. Тот же source прошёл локальный kind 17/17 с cleanup. [Контракт](RESOURCE-CONTROLS.md), [отчёт](verification/2026-10-29-resource-controls.md). Дополнительные ограничения cluster-wide прав оператора остаются отдельной задачей.
 - [ ] Helm Chart.
 - [ ] Нагрузочные и отказоустойчивые испытания с опубликованными измерениями.
 - [ ] Больше интеграционных сценариев и поддерживаемая Kubernetes version matrix.
 
-Requests/limits контейнера уже заданы в этапе 1. Inventory collector и защищённый HTTPS endpoint подтверждены GitHub-hosted kind; optional Prometheus/Grafana demo описан в [OBSERVABILITY.md](OBSERVABILITY.md). При запуске процесса вне manifests metrics по умолчанию выключены. Следующая работа — ограничения ресурсов и изоляция; внешняя PR-активация остаётся отдельным отложенным шагом.
+Inventory collector и защищённый HTTPS endpoint подтверждены GitHub-hosted kind; optional Prometheus/Grafana demo описан в [OBSERVABILITY.md](OBSERVABILITY.md). При запуске процесса вне manifests metrics по умолчанию выключены. ResourceQuota/LimitRange и PSA подтверждены отдельным admission e2e. Следующая работа — NetworkPolicy с проверкой на исполняющем её CNI и дополнительные ограничения доступа; внешняя PR-активация остаётся отложенным шагом.

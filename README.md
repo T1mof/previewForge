@@ -119,6 +119,8 @@ Ingress подтверждён [CI с 14 проверками](https://github.co
 
 Metrics/Prometheus/Grafana подтверждены [CI с 16 проверками](https://github.com/T1mof/previewForge/actions/runs/40745877197): HTTPS auth, inventory после рестарта/удаления, rule tests и запросы девяти панелей. [Отчёт](docs/verification/2026-10-28-metrics.md) содержит source SHA, artifact digest и ограничения локального прогона.
 
+ResourceQuota/LimitRange и Pod Security подтверждены [CI с 17 проверками](https://github.com/T1mof/previewForge/actions/runs/40890879045) и локальным kind 17/17 с cleanup: restricted app Ready, реальные admission-отказы опасных и превышающих бюджет Pod, watch-восстановление и cleanup. [Отчёт и проверенный artifact](docs/verification/2026-10-29-resource-controls.md).
+
 Демонстрация приложения в браузере: `make ingress-demo` или `bash scripts/ingress-demo.sh` из настроенного Git Bash. Новый локальный kind получает loopback listener и настоящий Traefik; скрипт проверяет HTTP и оставляет кластер для работы. По умолчанию URL — `http://localhost:8080`. [Инструкция и cleanup](docs/INGRESS.md#локальный-demo).
 
 При недоступном локальном Docker есть [GitHub Actions workflow](.github/workflows/operator-e2e.yml): Linux race/envtest, затем отдельный kind на GitHub-hosted Ubuntu с автоматической очисткой и проверкой полноты результатов. Подготовленный workflow не означает состоявшийся CI-прогон. Инструкция запуска и критерии успешного результата — в [VERIFICATION.md](docs/VERIFICATION.md). Остаточные риски и минимальные меры защиты — в [SECURITY.md](docs/SECURITY.md).

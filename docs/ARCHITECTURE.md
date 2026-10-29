@@ -18,14 +18,15 @@ Labels `app.kubernetes.io/managed-by=previewforge` и `platform.previewforge.dev
 2. Сохранить finalizer до создания ресурсов.
 3. Нормализовать/проверить spec, вычислить Namespace и deadline.
 4. При истёкшем TTL записать `Expired` и запросить удаление CR с UID/resourceVersion preconditions.
-5. Создать или согласовать Namespace; при Terminating дождаться удаления.
-6. Создать/согласовать Deployment, Service и необязательный Ingress; при отключении дождаться удаления принадлежащего CR маршрута.
-7. Определить готовность rollout, записать status при изменении.
-8. Перепроверить через минимум из 30 секунд и оставшегося TTL. Watch обычно реагирует быстрее.
+5. Создать или согласовать Namespace и PSA labels; при Terminating дождаться удаления, более строгую политику не понижать.
+6. Создать/согласовать ResourceQuota и LimitRange с проверкой owner UID; при их удалении дождаться восстановления.
+7. Создать/согласовать Deployment, Service и необязательный Ingress; при отключении дождаться удаления принадлежащего CR маршрута.
+8. Определить готовность rollout, записать status при изменении.
+9. Перепроверить через минимум из 30 секунд и оставшегося TTL. Watch обычно реагирует быстрее.
 
 Ошибки возвращаются controller-runtime; workqueue выполняет rate-limited retry. Частично созданное окружение допустимо: следующий вызов продолжит согласование. `AlreadyExists` после cache miss и resourceVersion conflicts также возвращаются для retry, без опасного принятия чужих ресурсов.
 
-Оператор контролирует Namespace labels, Deployment replicas/selector, labels Pod template, единственный app container с image/ports/resources/readiness, automount token, rollout deadline и Service type/selector/ports. Сторонние annotations и API defaults сохраняются. Полная конфигурация Pod, env, volumes и кастомные securityContext пока не входят в API. Во время редактирования CR старый reconcile может кратко применить прежнюю конфигурацию; generation guard запрещает опубликовать такой status как актуальный, следующее событие согласует новый spec.
+Оператор контролирует Namespace labels, quota/LimitRange spec, Deployment replicas/selector/strategy, labels Pod template и всю PodSpec: единственный app container, resources/readiness, ServiceAccount и securityContext. Service type/selector/ports также согласуются. Сторонние annotations/labels сохраняются, API defaults учитываются для идемпотентности. Произвольные env, volumes, sidecars и securityContext не входят в API и удаляются из управляемой PodSpec при drift repair. Во время редактирования CR старый reconcile может кратко применить прежнюю конфигурацию; generation guard запрещает опубликовать такой status как актуальный, следующее событие согласует новый spec.
 
 ## Status
 

@@ -1,14 +1,22 @@
 # Проверки
 
-## Resource controls и Pod Security — текущая проверка (2026-10-28)
+Актуализировано: 2026-10-29. Среда: Windows/amd64, Go 1.26.1; Ubuntu WSL2/Linux amd64, Go 1.26.9 и gcc 13.3. История ниже разделяет локальные проверки и GitHub-hosted kind; этап 1 завершён.
+
+## Resource controls и Pod Security — текущая проверка (2026-10-29)
+
+Итог 2026-10-29: [CI run 40890879045](https://github.com/T1mof/previewForge/actions/runs/40890879045), source `b5343c9845240d29ed828abcbe27f92c2051fdfb`: оба job **SUCCESS**, **17/17**, cleanup/report gate **PASS**. Artifact `12906427751`, SHA256 `2a436c2cdcb62e6e2799bd9eb9eb7e37d348b4a85348adb51ee26241d9d2eb88` скачан и независимо проверен, включая восемь guardrails подпроверок и все девять запросов Grafana. Linux race controller 3,601 с / policy 1,018 с / prenvironment 1,990 с; envtest 8,37 с / пакет 9,425 с. Тот же source прошёл локально **17/17**. [Подробный отчёт](verification/2026-10-29-resource-controls.md).
 
 Windows `scripts/check.ps1 -Generate` — **PASS**: controller-gen 0.22.0, gofmt/vet/test/build/Kustomize; покрытие controller 91,4%, policy 100%, prenvironment 80,1%. Linux `scripts/linux-checks.sh` — **PASS**: vet/build/race, envtest 17,66 с / пакет 18,903 с под ServiceAccount RBAC. API server подтвердил вложенные resource defaults, CEL quantity/request≤limit/caps, запрет downgrade restricted, новые права и watch-восстановление/drift repair ResourceQuota/LimitRange. Envtest не доказывает реальную работу quota admission, Pod или GC.
 
 Windows fake isolation 7/7, Bash fake isolation 9/9, cleanup/demo 21/21, synthetic gate 4/4, metadata unit 8/8, ShellCheck/Actionlint/Bash syntax — **PASS**. Первый отдельный вызов fake suite в WSL не нашёл Go в PATH; повтор с portable Go проекта прошёл. Это проверки CLI-изоляции, не Kubernetes e2e.
 
-Сценарий `e2e-guardrails.sh` добавлен в полный suite; gate требует 17 check ID. Настоящий kind-прогон нового сценария пока **NOT RUN**, CI будет зафиксирован отдельным отчётом. Внешний PR workflow остаётся выключенным.
+GitHub-hosted kind [run 40757615791](https://github.com/T1mof/previewForge/actions/runs/40757615791), source `714f02fc08669792b440c45395dc66e528086cbf`: оба job **SUCCESS**, **17/17**, cleanup/report gate **PASS**. Скачанный artifact `12848136039` проверен независимо: SHA256 совпал с API, все check ID/source SHA, restricted app Ready, LimitRange defaults/maximum, PSA и CPU quota admission, восстановление owner UID, Namespace и cluster cleanup. CI envtest 9,08 с / пакет 10,158 с. [Полный отчёт](verification/2026-10-29-resource-controls.md). Внешний PR workflow остаётся выключенным.
 
-Актуализировано: 2026-10-28. Среда: Windows/amd64, Go 1.26.1; Ubuntu WSL2/Linux amd64, Go 1.26.9 и gcc 13.3. История ниже разделяет локальные проверки и GitHub-hosted kind; этап 1 завершён.
+Первый локальный `previewforge-test-guardrails-20261028-a`: **FAIL**, cleanup **PASS**. После паузы машины прогон продолжился 2026-10-29 и прошёл lifecycle/Ingress/PR, запуск Prometheus/Grafana и inventory, но native `kubectl.exe` получил преобразованный Git Bash путь `C:/Program Files/Git/usr/bin/promtool` вместо пути внутри контейнера. Исправление `MSYS2_ARG_CONV_EXCL` исключает только `/bin/promtool` и `/etc/prometheus/`, сохраняя преобразование host kubeconfig. Прямая проверка аргументов native process в Git Bash — **PASS**. Полный повтор использует новый `previewforge-test-guardrails-20261029-b`; прежний кластер не переиспользуется.
+
+Локальный b: **FAIL**, cleanup **PASS**. Promtool config и rule tests прошли; первый запрос панели Grafana получил HTTP 400 из-за завершающего CR в файле, созданном Windows Python. Исправлено удаление CR перед формированием URL; probe на всех девяти строках реального файла — **PASS**.
+
+Итоговый локальный c `previewforge-test-guardrails-20261029-c`, source `b5343c9845240d29ed828abcbe27f92c2051fdfb`: **17/17 PASS**, E2E exit 0, cleanup exit 0, полный report gate PASS. Подтверждены restricted app, LimitRange defaults/maximum, PSA и CPU quota, новые UID восстановленных guardrails, cleanup Namespace, а также весь monitoring, HTTP/Ingress/PR/TTL suite. Кластер удалён; artifacts — `bin/runs/previewforge-test-guardrails-20261029-c/artifacts/`, лог — `bin/ci/previewforge-test-guardrails-20261029-c.log`.
 
 ## Метрики и monitoring demo (2026-10-28)
 
