@@ -101,6 +101,8 @@ metrics_queries grafana:3000 'api/datasources/proxy/uid/previewforge-prometheus/
 "$python_bin" -c 'import json,sys,urllib.parse; panels=json.load(open(sys.argv[1]))["dashboard"]["panels"]; print("\n".join(urllib.parse.quote(p["targets"][0]["expr"].replace("$__rate_interval","1m"),safe="") for p in panels))' "$directory/artifacts/metrics-grafana-dashboard.json" > "$directory/artifacts/metrics-dashboard-queries.txt"
 query_index=0
 while IFS= read -r query; do
+  # Native Windows Python writes CRLF; carriage return is not part of PromQL.
+  query=${query%$'\r'}
   query_index=$((query_index + 1))
   metrics_queries grafana:3000 "api/datasources/proxy/uid/previewforge-prometheus/api/v1/query?query=$query" "metrics-panel-$query_index.json"
   "$python_bin" -c 'import json,sys; assert json.load(open(sys.argv[1]))["status"]=="success"' "$directory/artifacts/metrics-panel-$query_index.json"
