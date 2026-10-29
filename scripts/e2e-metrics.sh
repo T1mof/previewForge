@@ -82,7 +82,7 @@ wait_value 30 inventory_count "$baseline_count" deleted
 
 # Git Bash must pass container paths literally to native kubectl.exe. Scope this
 # setting to exec so host kubeconfig paths retain normal MSYS conversion.
-MSYS_NO_PATHCONV=1 k -n previewforge-monitoring exec deployment/prometheus -- /bin/promtool check config /etc/prometheus/prometheus.yml > "$directory/artifacts/metrics-promtool.txt"
+MSYS2_ARG_CONV_EXCL='/bin/promtool;/etc/prometheus/' k -n previewforge-monitoring exec deployment/prometheus -- /bin/promtool check config /etc/prometheus/prometheus.yml > "$directory/artifacts/metrics-promtool.txt"
 k -n previewforge-monitoring exec deployment/prometheus -- sh -ec 'cd /etc/prometheus && /bin/promtool test rules rules.test.yml' >> "$directory/artifacts/metrics-promtool.txt"
 printf '\nRules unit test: PASS\n' >> "$directory/artifacts/metrics-promtool.txt"
 metrics_queries() {
