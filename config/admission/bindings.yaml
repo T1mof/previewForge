@@ -1,0 +1,31 @@
+apiVersion: admissionregistration.k8s.io/v1
+kind: ValidatingAdmissionPolicyBinding
+metadata:
+  name: previewforge-namespaces
+spec:
+  policyName: previewforge-namespaces.platform.previewforge.dev
+  validationActions: [Deny, Audit]
+---
+apiVersion: admissionregistration.k8s.io/v1
+kind: ValidatingAdmissionPolicyBinding
+metadata:
+  name: previewforge-children
+spec:
+  policyName: previewforge-children.platform.previewforge.dev
+  validationActions: [Deny, Audit]
+---
+apiVersion: admissionregistration.k8s.io/v1
+kind: ValidatingAdmissionPolicyBinding
+metadata:
+  name: previewforge-deployments
+spec:
+  policyName: previewforge-deployments.platform.previewforge.dev
+  validationActions: [Deny, Audit]
+---
+apiVersion: admissionregistration.k8s.io/v1
+kind: ValidatingAdmissionPolicyBinding
+metadata:
+  name: previewforge-services
+spec:
+  policyName: previewforge-services.platform.previewforge.dev
+  validationActions: [Deny, Audit]

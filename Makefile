@@ -27,6 +27,7 @@ manifests: generate
 	$(LOCALBIN)/controller-gen crd rbac:roleName=previewforge-manager-role 'paths=./api/v1alpha1;./internal/controller' output:crd:artifacts:config=config/crd/bases output:rbac:artifacts:config=config/rbac
 	$(LOCALBIN)/controller-gen rbac:roleName=previewforge-pr-deployer-role paths=./internal/prenvironment output:rbac:artifacts:config=config/pr-deployer
 	$(LOCALBIN)/controller-gen rbac:roleName=previewforge-metrics-reader paths=./internal/monitoring output:rbac:artifacts:config=config/metrics-reader
+	$(LOCALBIN)/controller-gen rbac:roleName=previewforge-admission-reader paths=./internal/admission output:rbac:artifacts:config=config/admission
 
 fmt:
 	gofmt -w api cmd internal examples test
@@ -41,11 +42,12 @@ test-race:
 	CGO_ENABLED=1 go test -race ./... -count=1
 
 test-integration: $(LOCALBIN)/setup-envtest
-	assets="$$($(LOCALBIN)/setup-envtest use $(ENVTEST_K8S_VERSION) --bin-dir $(LOCALBIN)/envtest -p path)" && CGO_ENABLED=1 KUBEBUILDER_ASSETS="$$assets" go test -race -tags=integration ./internal/controller -run TestEnvtest -count=1 -v -timeout=3m
+	assets="$$($(LOCALBIN)/setup-envtest use $(ENVTEST_K8S_VERSION) --bin-dir $(LOCALBIN)/envtest -p path)" && CGO_ENABLED=1 KUBEBUILDER_ASSETS="$$assets" go test -race -tags=integration ./internal/controller -run 'Test(Envtest|AdmissionEnvtest)' -count=1 -v -timeout=4m
 
 build: | $(LOCALBIN)
 	go build -trimpath -o $(LOCALBIN)/manager ./cmd/manager
 	go build -trimpath -o $(LOCALBIN)/previewctl ./cmd/previewctl
+	go build -trimpath -o $(LOCALBIN)/admissioncert ./cmd/admissioncert
 
 run:
 	go run ./cmd/manager

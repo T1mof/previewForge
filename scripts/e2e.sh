@@ -29,11 +29,13 @@ finish() {
       k get pods -A -o yaml > "$directory/artifacts/pods.yaml" 2>&1 || true
       k get ingresses -A -o yaml > "$directory/artifacts/ingresses.yaml" 2>&1 || true
       k get networkpolicies -A -o yaml > "$directory/artifacts/networkpolicies.yaml" 2>&1 || true
+      k get validatingadmissionpolicies,validatingadmissionpolicybindings,validatingwebhookconfigurations -o json > "$directory/artifacts/admission-config.json" 2>&1 || true
       k -n kube-system get daemonset/calico-node deployment/calico-kube-controllers -o yaml > "$directory/artifacts/calico.yaml" 2>&1 || true
       k -n kube-system logs daemonset/calico-node -c calico-node --tail=200 > "$directory/artifacts/calico.log" 2>&1 || true
       k get resourcequotas,limitranges -A -o yaml > "$directory/artifacts/guardrails.yaml" 2>&1 || true
       k get events -A --sort-by=.lastTimestamp > "$directory/artifacts/events.txt" 2>&1 || true
       k -n previewforge-system logs deployment/previewforge-controller-manager --tail=300 > "$directory/artifacts/operator.log" 2>&1 || true
+      k -n previewforge-system logs deployment/previewforge-admission --tail=200 > "$directory/artifacts/admission.log" 2>&1 || true
       k -n previewforge-ingress-system logs deployment/traefik --tail=200 > "$directory/artifacts/traefik.log" 2>&1 || true
       k -n previewforge-monitoring logs deployment/prometheus --tail=200 > "$directory/artifacts/prometheus.log" 2>&1 || true
       k -n previewforge-monitoring logs deployment/grafana --tail=200 > "$directory/artifacts/grafana.log" 2>&1 || true
@@ -168,6 +170,7 @@ EOF
 source scripts/e2e-metrics.sh
 source scripts/e2e-guardrails.sh
 source scripts/e2e-network.sh
+source scripts/e2e-admission.sh
 
 create_preview e2e-readiness 3600 81
 readiness_ns=''

@@ -27,6 +27,7 @@ flowchart LR
 - Deployment с CPU/memory requests и limits, TCP readiness probe; Service типа ClusterIP.
 - Настраиваемые CPU/memory, ResourceQuota/LimitRange и профили Pod Security baseline/restricted: [контракт и ограничения](docs/RESOURCE-CONTROLS.md).
 - Управляемые NetworkPolicy: внутрисредовой трафик, ограниченный DNS и доверенный Ingress gateway; Calico e2e проверяет enforcement: [контракт сети](docs/NETWORK-ISOLATION.md).
+- Дополнительный `config/hardened`: CEL-политики записи и отдельный read-only webhook проверки живых UID владельцев; [установка, TLS и ограничения](docs/ADMISSION.md). Новый этап пока проходит проверку.
 - Необязательный Ingress с явными host/class, ссылкой на TLS Secret и `status.url`; безопасное отключение, исправление drift и watch восстановления.
 - Фазы `Pending`, `Deploying`, `Ready`, `Failed`, `Expired`, condition `Ready`, диагностические сообщения.
 - Исправление управляемых полей, восстановление удалённых ресурсов, повторная обработка ошибок API.

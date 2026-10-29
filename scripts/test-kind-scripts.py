@@ -62,10 +62,11 @@ def main():
             tools = fixture / "tools"
             tools.mkdir()
             suffix = ".exe" if WINDOWS else ""
-            for tool in ("docker", "kind", "kubectl", "go"):
+            for tool in ("docker", "kind", "kubectl", "go", "admissioncert"):
                 shutil.copy2(executable, tools / (tool + suffix))
             if WINDOWS:
                 shutil.copy2(executable, fixture / "bin" / "kind.exe")
+                shutil.copy2(executable, fixture / "bin" / "admissioncert.exe")
             script_name = "kind-demo.ps1" if WINDOWS else "kind-demo.sh"
             script = fixture / "scripts" / script_name
             shutil.copy2(ROOT / "scripts" / script_name, script)

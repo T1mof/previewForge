@@ -1,0 +1,8 @@
+resources:
+  - server.yaml
+  - role.yaml
+  - namespaces.yaml
+  - children.yaml
+  - deployments.yaml
+  - services.yaml
+  - bindings.yaml

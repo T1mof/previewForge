@@ -40,14 +40,17 @@ Invoke-Checked { & $taskKind create cluster --name $ClusterName --image 'kindest
 Copy-Item -LiteralPath $taskConfig -Destination (Join-Path $taskRoot 'bin\kind.kubeconfig') -Force
 $taskImage = "previewforge:$ClusterName"
 $taskOverlay = Split-Path -Parent $taskConfig
+$taskAdmissionCert = if ($env:PREVIEWFORGE_ADMISSIONCERT) { $env:PREVIEWFORGE_ADMISSIONCERT } else { Join-Path $taskRoot 'bin\admissioncert.exe' }
+Invoke-Checked { & $taskAdmissionCert --directory $taskOverlay }
 [System.IO.File]::WriteAllLines((Join-Path $taskOverlay 'kustomization.yaml'), @(
-    'resources:', '  - ../../../config/default', 'images:', '  - name: previewforge', "    newTag: $ClusterName", 'patches:', '  - path: operator-network.yaml'
+    'resources:', '  - ../../../config/hardened', '  - admission-tls.json', 'images:', '  - name: previewforge', "    newTag: $ClusterName", 'patches:', '  - path: operator-network.yaml', '  - path: admission-ca.json'
 ), (New-Object System.Text.UTF8Encoding $false))
 Copy-Item -LiteralPath (Join-Path $taskRoot 'config\network-demo\operator-patch.yaml') -Destination (Join-Path $taskOverlay 'operator-network.yaml')
 Invoke-Checked { docker build -t $taskImage . }
 Invoke-Checked { & $taskKind load docker-image $taskImage --name $ClusterName }
 Invoke-Checked { kubectl --kubeconfig $taskConfig --context $taskContext apply -k $taskOverlay }
 Invoke-Checked { kubectl --kubeconfig $taskConfig --context $taskContext wait --for=condition=Established crd/previewenvironments.platform.previewforge.dev --timeout=60s }
+Invoke-Checked { kubectl --kubeconfig $taskConfig --context $taskContext -n previewforge-system rollout status deployment/previewforge-admission --timeout=120s }
 Invoke-Checked { kubectl --kubeconfig $taskConfig --context $taskContext -n previewforge-system rollout status deployment/previewforge-controller-manager --timeout=120s }
 Invoke-Checked { kubectl --kubeconfig $taskConfig --context $taskContext apply -f config/samples/platform_v1alpha1_previewenvironment.yaml }
 Invoke-Checked { kubectl --kubeconfig $taskConfig --context $taskContext wait --for=condition=Ready previewenvironment/pr-42 --timeout=300s }

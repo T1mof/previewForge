@@ -2,7 +2,11 @@
 
 Актуализировано: 2026-10-29. Среда: Windows/amd64, Go 1.26.1; Ubuntu WSL2/Linux amd64, Go 1.26.9 и gcc 13.3. История ниже разделяет локальные проверки и GitHub-hosted kind; этап 1 завершён.
 
-## NetworkPolicy — текущая проверка (2026-10-29)
+## Admission — выполняется проверка (2026-10-29)
+
+Подготовлены optional `config/hardened`, четыре CEL policy и отдельный TLS ownership webhook с manifest read-only ServiceAccount. Windows vet/test/build, сертификатная проверка, native fake CLI 7/7, Linux fake CLI 11/11, cleanup 21 и report gate 4 — PASS. Предварительная admission envtest suite прошла на настоящем API; после расширения проверок запущены полный Linux race/envtest и Calico kind suite. Новый 19-й check включает реальные отказы API при разрешающем RBAC, сохранение чужих UID/resourceVersion и отказ при остановке webhook. **Полный 19/19 и CI пока не подтверждены**. [Контракт, TLS и остаточные ограничения](ADMISSION.md).
+
+## NetworkPolicy — подтверждённая проверка (2026-10-29)
 
 Итоговый [CI run 40915413741](https://github.com/T1mof/previewForge/actions/runs/40915413741), source `cfb3946a588bf22aa514d2e4b6ae059606f5e965`: оба job **SUCCESS**, настоящий Calico suite **18/18**, cleanup/report gate **PASS**. Скачанный artifact `12916698603`, SHA256 `0d1ab4a99b52fd6518d865a95f8f8281d0abefb50d3d6e135d7a24b60479a9f5` совпал с API. Независимо проверены 21 allowed/17 denied probe JSON, десять network подпроверок, peers/ports/owner UID/new UID/revoke и Namespace/cluster cleanup. CI race controller 6,135 с, probe 1,029 с; envtest 10,58 с / пакет 11,674 с. [Отчёт и границы доказательств](verification/2026-10-29-network-isolation.md).
 

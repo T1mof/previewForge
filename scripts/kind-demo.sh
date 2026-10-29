@@ -61,20 +61,25 @@ if [[ "$kind_cni" == calico ]]; then source scripts/install-calico.sh; fi
 cp "$kubeconfig" bin/kind.kubeconfig
 image="previewforge:$cluster"
 overlay=$(dirname "$kubeconfig")
+admissioncert=${PREVIEWFORGE_ADMISSIONCERT:-admissioncert}
+"$admissioncert" --directory "$overlay"
 cat > "$overlay/kustomization.yaml" <<EOF
 resources:
-  - ../../../config/default
+  - ../../../config/hardened
+  - admission-tls.json
 images:
   - name: previewforge
     newTag: $cluster
 patches:
   - path: operator-network.yaml
+  - path: admission-ca.json
 EOF
 cp config/network-demo/operator-patch.yaml "$overlay/operator-network.yaml"
 docker build -t "$image" .
 kind load docker-image "$image" --name "$cluster"
 k apply -k "$overlay"
 k wait --for=condition=Established crd/previewenvironments.platform.previewforge.dev --timeout=60s
+k -n previewforge-system rollout status deployment/previewforge-admission --timeout=120s
 k -n previewforge-system rollout status deployment/previewforge-controller-manager --timeout=120s
 k apply -f config/samples/platform_v1alpha1_previewenvironment.yaml
 k wait --for=condition=Ready previewenvironment/pr-42 --timeout=300s

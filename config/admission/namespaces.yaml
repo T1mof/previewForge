@@ -1,0 +1,74 @@
+apiVersion: admissionregistration.k8s.io/v1
+kind: ValidatingAdmissionPolicy
+metadata:
+  name: previewforge-namespaces.platform.previewforge.dev
+spec:
+  failurePolicy: Fail
+  matchConstraints:
+    resourceRules:
+      - apiGroups: [""]
+        apiVersions: [v1]
+        operations: [CREATE, UPDATE, DELETE]
+        resources: [namespaces]
+        scope: Cluster
+  matchConditions:
+    - name: operator-identity
+      expression: "request.userInfo.username == 'system:serviceaccount:previewforge-system:previewforge-controller-manager'"
+  variables:
+    - name: target
+      expression: "request.operation == 'DELETE' ? oldObject : object"
+    - name: owners
+      expression: >-
+        has(variables.target.metadata.ownerReferences) ? variables.target.metadata.ownerReferences.filter(r,
+          has(r.controller) && r.controller && r.apiVersion == 'platform.previewforge.dev/v1alpha1' &&
+          r.kind == 'PreviewEnvironment' && r.name != '' && r.uid != '') : []
+    - name: oldOwners
+      expression: >-
+        oldObject != null && has(oldObject.metadata.ownerReferences) ? oldObject.metadata.ownerReferences.filter(r,
+          has(r.controller) && r.controller && r.apiVersion == 'platform.previewforge.dev/v1alpha1' &&
+          r.kind == 'PreviewEnvironment' && r.name != '' && r.uid != '') : []
+    - name: annotations
+      expression: "object != null && has(object.metadata.annotations) ? object.metadata.annotations : {}"
+    - name: oldAnnotations
+      expression: "oldObject != null && has(oldObject.metadata.annotations) ? oldObject.metadata.annotations : {}"
+  validations:
+    - expression: "variables.target.metadata.name.startsWith('forge-') && size(variables.owners) == 1"
+      message: "PreviewForge namespace boundary: a forge-* name and PreviewEnvironment controller owner reference are required"
+      reason: Forbidden
+    - expression: >-
+        request.operation == 'CREATE' ||
+        (size(variables.oldOwners) == 1 && size(variables.owners) == 1 &&
+         variables.oldOwners[0].uid == variables.owners[0].uid && variables.oldOwners[0].name == variables.owners[0].name)
+      message: "PreviewForge namespace boundary: existing controller ownership must not be adopted or changed"
+      reason: Forbidden
+    - expression: >-
+        request.operation == 'DELETE' ||
+        (size(variables.owners) == 1 && has(object.metadata.labels) &&
+         'app.kubernetes.io/managed-by' in object.metadata.labels && object.metadata.labels['app.kubernetes.io/managed-by'] == 'previewforge' &&
+         'platform.previewforge.dev/owner-uid' in object.metadata.labels && object.metadata.labels['platform.previewforge.dev/owner-uid'] == variables.owners[0].uid)
+      message: "PreviewForge namespace boundary: diagnostic labels must agree with the controller UID"
+      reason: Forbidden
+    - expression: >-
+        request.operation == 'DELETE' ||
+        (has(object.metadata.labels) &&
+         'pod-security.kubernetes.io/enforce' in object.metadata.labels && object.metadata.labels['pod-security.kubernetes.io/enforce'] in ['baseline', 'restricted'] &&
+         ['warn', 'audit'].all(m, 'pod-security.kubernetes.io/' + m in object.metadata.labels && object.metadata.labels['pod-security.kubernetes.io/' + m] == 'restricted') &&
+         ['enforce', 'warn', 'audit'].all(m,
+           'pod-security.kubernetes.io/' + m + '-version' in object.metadata.labels &&
+           (object.metadata.labels['pod-security.kubernetes.io/' + m + '-version'] == 'latest' ||
+            (object.metadata.labels['pod-security.kubernetes.io/' + m + '-version'].matches('^v[0-9]+[.][0-9]+$') &&
+             (int(object.metadata.labels['pod-security.kubernetes.io/' + m + '-version'].substring(1).split('.')[0]) > 1 ||
+              (int(object.metadata.labels['pod-security.kubernetes.io/' + m + '-version'].substring(1).split('.')[0]) == 1 &&
+               int(object.metadata.labels['pod-security.kubernetes.io/' + m + '-version'].substring(1).split('.')[1]) >= 37))))))
+      message: "PreviewForge namespace boundary: baseline/restricted PSA and restricted audit/warn at v1.37 or newer are required"
+      reason: Forbidden
+    - expression: >-
+        request.operation != 'UPDATE' || !has(oldObject.metadata.labels) ||
+        !('pod-security.kubernetes.io/enforce' in oldObject.metadata.labels) ||
+        oldObject.metadata.labels['pod-security.kubernetes.io/enforce'] != 'restricted' ||
+        (has(object.metadata.labels) && object.metadata.labels['pod-security.kubernetes.io/enforce'] == 'restricted')
+      message: "PreviewForge namespace boundary: restricted enforcement cannot be downgraded"
+      reason: Forbidden
+    - expression: "request.operation == 'DELETE' || (request.operation == 'CREATE' ? size(variables.annotations) == 0 : variables.annotations == variables.oldAnnotations)"
+      message: "PreviewForge namespace boundary: operator must not create or change Namespace annotations"
+      reason: Forbidden

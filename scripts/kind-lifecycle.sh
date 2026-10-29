@@ -64,9 +64,9 @@ pf_cleanup_cluster() {
   # A failed create may leave nodes without a kubeconfig. The claim is written
   # before create, so partial creation is also covered by this exact-name delete.
   if command -v timeout >/dev/null; then
-    timeout 90s kind delete cluster --name "$PREVIEWFORGE_TEST_CLUSTER" || return 1
+    timeout 90s kind delete cluster --name "$PREVIEWFORGE_TEST_CLUSTER" --kubeconfig "$directory/kubeconfig" || return 1
   else
-    kind delete cluster --name "$PREVIEWFORGE_TEST_CLUSTER" || return 1
+    kind delete cluster --name "$PREVIEWFORGE_TEST_CLUSTER" --kubeconfig "$directory/kubeconfig" || return 1
   fi
   clusters=$(kind get clusters) || return 1
   while IFS= read -r existing; do

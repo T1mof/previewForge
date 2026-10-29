@@ -1,0 +1,27 @@
+apiVersion: admissionregistration.k8s.io/v1
+kind: ValidatingAdmissionPolicy
+metadata:
+  name: previewforge-services.platform.previewforge.dev
+spec:
+  failurePolicy: Fail
+  matchConstraints:
+    resourceRules:
+      - apiGroups: [""]
+        apiVersions: [v1]
+        operations: [CREATE, UPDATE]
+        resources: [services]
+        scope: Namespaced
+  matchConditions:
+    - name: operator-identity
+      expression: "request.userInfo.username == 'system:serviceaccount:previewforge-system:previewforge-controller-manager'"
+  validations:
+    - expression: >-
+        object.spec.type == 'ClusterIP' && (!has(object.spec.externalName) || object.spec.externalName == '') &&
+        (!has(object.spec.externalIPs) || size(object.spec.externalIPs) == 0) &&
+        (!has(object.spec.loadBalancerIP) || object.spec.loadBalancerIP == '') &&
+        (!has(object.spec.loadBalancerClass) || object.spec.loadBalancerClass == '') &&
+        has(object.spec.selector) && 'app.kubernetes.io/name' in object.spec.selector && object.spec.selector['app.kubernetes.io/name'] == 'app' &&
+        'platform.previewforge.dev/owner-uid' in object.spec.selector && has(object.metadata.ownerReferences) &&
+        object.metadata.ownerReferences.exists(r, has(r.controller) && r.controller && r.uid == object.spec.selector['platform.previewforge.dev/owner-uid'])
+      message: "PreviewForge service safety: only internal ClusterIP with the owned app selector is allowed"
+      reason: Forbidden

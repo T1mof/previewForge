@@ -1,6 +1,6 @@
 # Безопасность и остаточные риски
 
-Сейчас PreviewForge следует использовать в отдельном тестовом кластере без production credentials и ценных данных. Ownership-проверки защищают от ошибок reconcile; они не ограничивают возможности скомпрометированного ServiceAccount. Успешный lifecycle e2e также не доказывает безопасность для недоверенных tenants.
+Сейчас PreviewForge следует использовать в отдельном тестовом кластере без production credentials и ценных данных. Ownership-проверки reconcile защищают от ошибок приложения. Optional `config/hardened` дополнительно ограничивает фактические записи ServiceAccount через CEL и отдельный read-only ownership webhook; [контракт, TLS и остаточные риски](ADMISSION.md). Успешный lifecycle e2e не доказывает безопасность для недоверенных tenants.
 
 ## Широкий RBAC
 
@@ -12,7 +12,7 @@
 - В тестовом кластере выдавать create/update/delete PreviewEnvironment только доверенным пользователям. Не выдавать им управление ServiceAccount/RBAC и произвольную запись в управляемые Namespace. Сам оператор не получает права на изменение RBAC; envtest проверяет отрицательные разрешения.
 - Сохранять securityContext оператора: non-root, read-only root filesystem, запрет privilege escalation, seccomp и сброс capabilities. Для приложений отключён автоматический mount ServiceAccount token. Каждый preview Namespace получает PSA enforce baseline/restricted, ResourceQuota и LimitRange; для совместимых образов используйте `spec.securityProfile: restricted`. Точные defaults, бюджеты и ограничения — в [RESOURCE-CONTROLS.md](RESOURCE-CONTROLS.md).
 
-Перед общим кластером: admission-правила должны запретить оператору запись/удаление в системных и пользовательских Namespace, ограничить workload ServiceAccount, Secret/hostPath mounts, hostNetwork и privileged Pods. Один префикс имени — лишь дополнительный фильтр. Более сильное сокращение RBAC требует разделить доверенный bootstrap Namespace/RoleBinding и контроллер с namespaced Roles; динамическая выдача RBAC сама по себе привилегированна и требует отдельного проектирования. Эти изменения пока предложены, не реализованы.
+`config/hardened` запрещает записи оператора вне вычисленного Namespace живого CR, сверяет owner references/UID через API и ограничивает workload ServiceAccount, Secret/hostPath mounts, hostNetwork и privileged Pods. Один префикс имени — лишь дополнительный фильтр. `config/default` этих admission-ограничений не устанавливает. Более сильное сокращение RBAC требует разделить доверенный bootstrap Namespace/RoleBinding и контроллер с namespaced Roles; динамическая выдача RBAC сама по себе привилегированна и требует отдельного проектирования. Broad read/list/watch и запись CR/NetworkPolicy внутри владений остаются отдельными рисками; общий кластер пока не является подтверждённой моделью эксплуатации.
 
 ## Сетевая изоляция и её границы
 

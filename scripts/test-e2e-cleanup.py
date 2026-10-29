@@ -97,7 +97,7 @@ def main():
             scripts.mkdir(parents=True)
             (fixture / "config" / "network-demo").mkdir(parents=True)
             shutil.copy2(ROOT / "config/network-demo/operator-patch.yaml", fixture / "config/network-demo/operator-patch.yaml")
-            for script in ("kind-demo.sh", "install-calico.sh", "ingress-demo.sh", "kind-lifecycle.sh", "cleanup-kind.sh", "e2e.sh", "e2e-ingress.sh", "e2e-pr.sh", "e2e-metrics.sh", "e2e-guardrails.sh", "e2e-network.sh", "verify-e2e-result.sh"):
+            for script in ("kind-demo.sh", "install-calico.sh", "ingress-demo.sh", "kind-lifecycle.sh", "cleanup-kind.sh", "e2e.sh", "e2e-ingress.sh", "e2e-pr.sh", "e2e-metrics.sh", "e2e-guardrails.sh", "e2e-network.sh", "e2e-admission.sh", "verify-e2e-result.sh"):
                 shutil.copy2(ROOT / "scripts" / script, scripts / script)
             if scenario == "successful-body":
                 # Exercise the successful EXIT path without pretending to run
@@ -107,7 +107,7 @@ def main():
                 script.write_text(handler + "bash scripts/kind-demo.sh\nexit 0\n")
             tools = fixture / "tools"
             tools.mkdir()
-            for tool in ("docker", "kind", "kubectl", "curl", "previewctl"):
+            for tool in ("docker", "kind", "kubectl", "curl", "previewctl", "admissioncert"):
                 shutil.copy2(executable, tools / tool)
             log = fixture / "calls.jsonl"
             state = fixture / "cluster-state"
@@ -167,7 +167,7 @@ def main():
                     assert state.read_text() == CLUSTER
             else:
                 assert len(deletes) == 1, calls
-                assert deletes[0] == ["kind", "delete", "cluster", "--name", CLUSTER], deletes
+                assert deletes[0] == ["kind", "delete", "cluster", "--name", CLUSTER, "--kubeconfig", str(directory / "kubeconfig")], deletes
                 if scenario == "cleanup":
                     assert state.exists() and (directory / ".cluster-owner").exists()
                 else:
@@ -198,10 +198,10 @@ def main():
                 # accepted as a completed application lifecycle suite.
                 assert subprocess.run(gate, cwd=fixture, env=env, capture_output=True).returncode != 0
                 print("report gate: incomplete lifecycle rejected PASS (synthetic report)")
-                checks.write_text("PASS: cluster-isolation: duplicate\n" * 18)
+                checks.write_text("PASS: cluster-isolation: duplicate\n" * 19)
                 assert subprocess.run(gate, cwd=fixture, env=env, capture_output=True).returncode != 0
                 print("report gate: duplicate checks rejected PASS (synthetic report)")
-                names = ("creation owners recreation drift restart http ingress pr-integration metrics guardrails network readiness finalizer ttl-active "
+                names = ("creation owners recreation drift restart http ingress pr-integration metrics guardrails network admission readiness finalizer ttl-active "
                          "ttl-downtime manual-delete foreign-resources cluster-isolation").split()
                 checks.write_text("".join(f"PASS: {name}: synthetic fixture\n" for name in names))
                 assert subprocess.run(gate, cwd=fixture, env=env, capture_output=True).returncode == 0

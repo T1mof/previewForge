@@ -16,6 +16,7 @@ if ($Generate) {
     Invoke-Checked { & "$env:GOBIN\controller-gen.exe" crd rbac:roleName=previewforge-manager-role 'paths=./api/v1alpha1;./internal/controller' output:crd:artifacts:config=config/crd/bases output:rbac:artifacts:config=config/rbac }
     Invoke-Checked { & "$env:GOBIN\controller-gen.exe" rbac:roleName=previewforge-pr-deployer-role 'paths=./internal/prenvironment' output:rbac:artifacts:config=config/pr-deployer }
     Invoke-Checked { & "$env:GOBIN\controller-gen.exe" rbac:roleName=previewforge-metrics-reader 'paths=./internal/monitoring' output:rbac:artifacts:config=config/metrics-reader }
+    Invoke-Checked { & "$env:GOBIN\controller-gen.exe" rbac:roleName=previewforge-admission-reader 'paths=./internal/admission' output:rbac:artifacts:config=config/admission }
 }
 Invoke-Checked { gofmt -w api cmd internal examples test }
 Invoke-Checked { go vet ./... }
@@ -23,4 +24,5 @@ Invoke-Checked { go test ./... '-coverprofile=coverage.out' }
 New-Item -ItemType Directory -Path $env:GOBIN -Force | Out-Null
 Invoke-Checked { go build -trimpath -o "$env:GOBIN\manager.exe" ./cmd/manager }
 Invoke-Checked { go build -trimpath -o "$env:GOBIN\previewctl.exe" ./cmd/previewctl }
+Invoke-Checked { go build -trimpath -o "$env:GOBIN\admissioncert.exe" ./cmd/admissioncert }
 Invoke-Checked { kubectl kustomize config/default | Out-File -FilePath "$env:GOBIN\install.yaml" -Encoding utf8 }
