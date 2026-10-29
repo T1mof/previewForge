@@ -80,7 +80,9 @@ k delete previewenvironment e2e-metrics --wait=true --timeout=120s
 k wait --for=delete namespace/"$metrics_namespace" --timeout=120s
 wait_value 30 inventory_count "$baseline_count" deleted
 
-k -n previewforge-monitoring exec deployment/prometheus -- /bin/promtool check config /etc/prometheus/prometheus.yml > "$directory/artifacts/metrics-promtool.txt"
+# Git Bash must pass container paths literally to native kubectl.exe. Scope this
+# setting to exec so host kubeconfig paths retain normal MSYS conversion.
+MSYS_NO_PATHCONV=1 k -n previewforge-monitoring exec deployment/prometheus -- /bin/promtool check config /etc/prometheus/prometheus.yml > "$directory/artifacts/metrics-promtool.txt"
 k -n previewforge-monitoring exec deployment/prometheus -- sh -ec 'cd /etc/prometheus && /bin/promtool test rules rules.test.yml' >> "$directory/artifacts/metrics-promtool.txt"
 printf '\nRules unit test: PASS\n' >> "$directory/artifacts/metrics-promtool.txt"
 metrics_queries() {
