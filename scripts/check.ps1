@@ -17,7 +17,7 @@ if ($Generate) {
     Invoke-Checked { & "$env:GOBIN\controller-gen.exe" rbac:roleName=previewforge-pr-deployer-role 'paths=./internal/prenvironment' output:rbac:artifacts:config=config/pr-deployer }
     Invoke-Checked { & "$env:GOBIN\controller-gen.exe" rbac:roleName=previewforge-metrics-reader 'paths=./internal/monitoring' output:rbac:artifacts:config=config/metrics-reader }
 }
-Invoke-Checked { gofmt -w api cmd internal examples }
+Invoke-Checked { gofmt -w api cmd internal examples test }
 Invoke-Checked { go vet ./... }
 Invoke-Checked { go test ./... '-coverprofile=coverage.out' }
 New-Item -ItemType Directory -Path $env:GOBIN -Force | Out-Null

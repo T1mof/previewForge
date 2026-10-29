@@ -42,10 +42,10 @@ jobs:
           go install github.com/rhysd/actionlint/cmd/actionlint@v1.7.12
           bin/linux/actionlint .github/workflows/operator-e2e.yml .github/workflows/preview-pr.yml
           python3 .github/scripts/test_pr_event.py
-          shellcheck -x scripts/kind-demo.sh scripts/ingress-demo.sh scripts/kind-lifecycle.sh scripts/cleanup-kind.sh scripts/e2e.sh scripts/e2e-ingress.sh scripts/e2e-pr.sh scripts/e2e-metrics.sh scripts/e2e-guardrails.sh scripts/verify-e2e-result.sh
+          shellcheck -x scripts/kind-demo.sh scripts/install-calico.sh scripts/ingress-demo.sh scripts/kind-lifecycle.sh scripts/cleanup-kind.sh scripts/e2e.sh scripts/e2e-ingress.sh scripts/e2e-pr.sh scripts/e2e-metrics.sh scripts/e2e-guardrails.sh scripts/e2e-network.sh scripts/verify-e2e-result.sh
           python3 scripts/test-kind-scripts.py
           python3 scripts/test-e2e-cleanup.py
-          bash -n scripts/kind-demo.sh scripts/ingress-demo.sh scripts/kind-lifecycle.sh scripts/cleanup-kind.sh scripts/e2e.sh scripts/e2e-ingress.sh scripts/e2e-pr.sh scripts/e2e-metrics.sh scripts/e2e-guardrails.sh scripts/verify-e2e-result.sh
+          bash -n scripts/kind-demo.sh scripts/install-calico.sh scripts/ingress-demo.sh scripts/kind-lifecycle.sh scripts/cleanup-kind.sh scripts/e2e.sh scripts/e2e-ingress.sh scripts/e2e-pr.sh scripts/e2e-metrics.sh scripts/e2e-guardrails.sh scripts/e2e-network.sh scripts/verify-e2e-result.sh
       - name: Upload verification log
         if: always()
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
@@ -60,7 +60,7 @@ jobs:
     needs: linux-checks
     # Never use a persistent self-hosted runner or external Kubernetes credentials.
     runs-on: ubuntu-24.04
-    timeout-minutes: 30
+    timeout-minutes: 40
     env:
       KIND_EXPERIMENTAL_PROVIDER: docker
     steps:

@@ -64,6 +64,7 @@ spec:
     metadata:
       labels:
         app.kubernetes.io/name: previewforge-demo-traefik
+        platform.previewforge.dev/ingress-gateway: "true"
     spec:
       serviceAccountName: traefik
       securityContext:

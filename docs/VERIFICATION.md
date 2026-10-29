@@ -123,7 +123,8 @@ E2e создаёт новый `previewforge-test-<random>` и используе
 
 - Создание CR, Namespace/Deployment/Service, controller ownerReferences и Ready.
 - Настоящие готовые Pod; при закрытом readiness-порте работающий Pod не переводит CR в Ready, исправление порта завершает rollout.
-- Restricted example с настраиваемыми ресурсами; LimitRange defaults, admission-отказ privileged/oversized/CPU-overquota Pod, восстановление ResourceQuota/LimitRange и cleanup Namespace. Текущий полный report gate требует 17 check ID; результаты прежних suite сохраняют свои исторические counts.
+- Restricted example с настраиваемыми ресурсами; LimitRange defaults, admission-отказ privileged/oversized/CPU-overquota Pod, восстановление ResourceQuota/LimitRange и cleanup Namespace. На этапе resource controls gate требовал 17 check ID; результаты прежних suite сохраняют свои исторические counts.
+- Сетевой suite теперь требует 18 check ID и устанавливает Calico 3.33.0 в новый kind с отключённым default CNI. Проверяет реальные allow/deny через Pod IP/Service, CoreDNS UDP/TCP, публичный TCP с внешним положительным контролем, точные gateway peers/port, восстановление/restart и отзыв доступа. Контракт — в [NETWORK-ISOLATION.md](NETWORK-ISOLATION.md); наличие политики на kindnet не считается enforcement.
 - Новая UID Deployment после его удаления; исправление drift replicas.
 - Изменение spec при остановленном операторе, актуальная generation и Ready после рестарта.
 - HTTP запросы к Service DNS и ClusterIP из настоящего Pod, ready EndpointSlice и содержимое ответа nginx.

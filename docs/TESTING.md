@@ -2,6 +2,14 @@
 
 Актуализировано: 2026-10-29. Среда: Windows/amd64, Go 1.26.1; Ubuntu WSL2/Linux amd64, Go 1.26.9 и gcc 13.3. История ниже разделяет локальные проверки и GitHub-hosted kind; этап 1 завершён.
 
+## NetworkPolicy — текущая проверка (2026-10-29)
+
+Windows generation/controller-gen 0.22.0, gofmt/vet/test/build — **PASS**, controller 92,7%. Linux vet/build/race — **PASS**; controller 4,374 с, probe 1,131 с. Envtest под manifest ServiceAccount RBAC — **PASS**, 18,31 с / пакет 19,542 с: реальные NetworkPolicy UID/watch/recreation, drift и create/patch allow, delete deny. Это проверка API, не dataplane.
+
+Предварительный новый `previewforge-test-calico-20261029-a` подтвердил запуск Calico 3.33.0, CoreDNS, оператора и nginx Ready с двумя репликами. Кластер удалён, `cleanup.txt` PASS. PowerShell-обёртка с native stderr redirection вернула 1; полного e2e/enforcement в этом запуске не было. Дальнейший runner пишет UTF-8 log внутри Bash и сохраняет настоящий exit code suite.
+
+Новый `e2e-network.sh` и gate 18 добавлены, настоящий полный сетевой e2e пока **NOT RUN**. Наличие NetworkPolicy в API и успешный bootstrap Calico не считаются доказательством блокировки. Контракт — в [NETWORK-ISOLATION.md](NETWORK-ISOLATION.md). Внешний PR workflow выключен.
+
 ## Resource controls и Pod Security — текущая проверка (2026-10-29)
 
 Итог 2026-10-29: [CI run 40890879045](https://github.com/T1mof/previewForge/actions/runs/40890879045), source `b5343c9845240d29ed828abcbe27f92c2051fdfb`: оба job **SUCCESS**, **17/17**, cleanup/report gate **PASS**. Artifact `12906427751`, SHA256 `2a436c2cdcb62e6e2799bd9eb9eb7e37d348b4a85348adb51ee26241d9d2eb88` скачан и независимо проверен, включая восемь guardrails подпроверок и все девять запросов Grafana. Linux race controller 3,601 с / policy 1,018 с / prenvironment 1,990 с; envtest 8,37 с / пакет 9,425 с. Тот же source прошёл локально **17/17**. [Подробный отчёт](verification/2026-10-29-resource-controls.md).

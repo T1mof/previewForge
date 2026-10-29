@@ -4,6 +4,8 @@
 
 ## API
 
+Для доступа к приложению настройте operator flags `--ingress-controller-namespace` и `--ingress-controller-pod-selector`: NetworkPolicy разрешает только этот gateway и только TCP `spec.port`. IngressClass сам по себе не определяет сетевую идентичность контроллера. Без admin config CR получает `NetworkPolicyFailed`. Локальные overlays уже задают identity тестового Traefik; правила и CNI — в [NETWORK-ISOLATION.md](NETWORK-ISOLATION.md).
+
 ```yaml
 spec:
   image: nginx:alpine

@@ -19,7 +19,7 @@ Labels `app.kubernetes.io/managed-by=previewforge` и `platform.previewforge.dev
 3. Нормализовать/проверить spec, вычислить Namespace и deadline.
 4. При истёкшем TTL записать `Expired` и запросить удаление CR с UID/resourceVersion preconditions.
 5. Создать или согласовать Namespace и PSA labels; при Terminating дождаться удаления, более строгую политику не понижать.
-6. Создать/согласовать ResourceQuota и LimitRange с проверкой owner UID; при их удалении дождаться восстановления.
+6. Создать/согласовать ResourceQuota, LimitRange и две NetworkPolicy с проверкой owner UID; при их удалении дождаться восстановления. Gateway peer задаёт администратор; CR не может разрешить произвольный egress.
 7. Создать/согласовать Deployment, Service и необязательный Ingress; при отключении дождаться удаления принадлежащего CR маршрута.
 8. Определить готовность rollout, записать status при изменении.
 9. Перепроверить через минимум из 30 секунд и оставшегося TTL. Watch обычно реагирует быстрее.
@@ -54,7 +54,7 @@ Manager запускает четыре worker; workqueue сериализует
 
 Оператор не читает Secrets и не управляет Pod напрямую. ClusterRole ограничена PreviewEnvironment, Namespace, Deployment, Service и Ingress; Lease и запись Event для leader election доступны через Role только в `previewforge-system`. Динамические Namespace требуют cluster-wide разрешений на перечисление и создание ресурсов: RBAC не умеет ограничивать права произвольными owner labels. Ownership guards являются логикой приложения, а не защитой от компрометации самого оператора.
 
-Requests по умолчанию 100m/64Mi, limits 500m/256Mi; API допускает настройку в ограниченном диапазоне. Поддерживаются 1–10 реплик, один surge Pod и TCP readiness. ServiceAccount token отключён. До Deployment создаются принадлежащие CR ResourceQuota/LimitRange и согласуются Namespace Pod Security labels. Профили baseline/restricted, фиксированный Namespace budget, владение всей PodSpec и границы защиты описаны в [RESOURCE-CONTROLS.md](RESOURCE-CONTROLS.md). NetworkPolicy/CNI и дополнительные ограничения cluster-wide прав оператора остаются будущей работой; проект предназначен для доверенных приложений в отдельном тестовом кластере.
+Requests по умолчанию 100m/64Mi, limits 500m/256Mi; API допускает настройку в ограниченном диапазоне. Поддерживаются 1–10 реплик, один surge Pod и TCP readiness. ServiceAccount token отключён. До Deployment создаются принадлежащие CR ResourceQuota/LimitRange/NetworkPolicy и согласуются Namespace Pod Security labels. Профили и бюджеты — в [RESOURCE-CONTROLS.md](RESOURCE-CONTROLS.md), DNS/gateway peers и необходимость реального CNI enforcement — в [NETWORK-ISOLATION.md](NETWORK-ISOLATION.md). Ready по TCP не доказывает изоляцию CNI. Дополнительные ограничения cluster-wide прав оператора остаются будущей работой; проект предназначен для доверенных приложений в отдельном тестовом кластере.
 
 ## Необязательный Ingress
 

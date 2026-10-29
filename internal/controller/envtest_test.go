@@ -90,7 +90,7 @@ func TestEnvtest(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		r := &PreviewEnvironmentReconciler{Client: mgr.GetClient(), APIReader: mgr.GetAPIReader(), Scheme: scheme}
+		r := &PreviewEnvironmentReconciler{Client: mgr.GetClient(), APIReader: mgr.GetAPIReader(), Scheme: scheme, Network: testNetworkConfig()}
 		if err := r.SetupWithManager(mgr); err != nil {
 			t.Fatal(err)
 		}
@@ -146,8 +146,9 @@ func TestEnvtest(t *testing.T) {
 		t.Fatal("real API must preserve Ingress route and ownership")
 	}
 	verifyGuardrailsWatches(t, c, p)
+	verifyNetworkWatches(t, c, p)
 	// Verify API defaulting does not make reconciliation continually write a Deployment.
-	r := &PreviewEnvironmentReconciler{Client: c, APIReader: c, Scheme: scheme}
+	r := &PreviewEnvironmentReconciler{Client: c, APIReader: c, Scheme: scheme, Network: testNetworkConfig()}
 	eventually(t, func() error {
 		_, err := r.Reconcile(ctx, ctrl.Request{NamespacedName: types.NamespacedName{Name: p.Name}})
 		return err

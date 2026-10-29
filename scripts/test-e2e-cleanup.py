@@ -95,7 +95,9 @@ def main():
             fixture = work / scenario
             scripts = fixture / "scripts"
             scripts.mkdir(parents=True)
-            for script in ("kind-demo.sh", "ingress-demo.sh", "kind-lifecycle.sh", "cleanup-kind.sh", "e2e.sh", "e2e-ingress.sh", "e2e-pr.sh", "e2e-metrics.sh", "e2e-guardrails.sh", "verify-e2e-result.sh"):
+            (fixture / "config" / "network-demo").mkdir(parents=True)
+            shutil.copy2(ROOT / "config/network-demo/operator-patch.yaml", fixture / "config/network-demo/operator-patch.yaml")
+            for script in ("kind-demo.sh", "install-calico.sh", "ingress-demo.sh", "kind-lifecycle.sh", "cleanup-kind.sh", "e2e.sh", "e2e-ingress.sh", "e2e-pr.sh", "e2e-metrics.sh", "e2e-guardrails.sh", "e2e-network.sh", "verify-e2e-result.sh"):
                 shutil.copy2(ROOT / "scripts" / script, scripts / script)
             if scenario == "successful-body":
                 # Exercise the successful EXIT path without pretending to run
@@ -129,6 +131,7 @@ def main():
                        PF_TEST_LOG=str(log), PF_STATE=str(state), PF_FAIL=scenario,
                        PF_ENDPOINT=("unix:///different.sock" if scenario == "changed-endpoint" else
                                     "ssh://remote.example" if scenario == "remote-endpoint" else "unix:///var/run/docker.sock"))
+            env["PREVIEWFORGE_KIND_CNI"] = "kindnet"
             command = ["bash", str(scripts / ("cleanup-kind.sh" if standalone else "ingress-demo.sh" if scenario.startswith("demo-") else "e2e.sh"))]
             if scenario == "signal":
                 with (fixture / "output.txt").open("w") as output:
@@ -195,10 +198,10 @@ def main():
                 # accepted as a completed application lifecycle suite.
                 assert subprocess.run(gate, cwd=fixture, env=env, capture_output=True).returncode != 0
                 print("report gate: incomplete lifecycle rejected PASS (synthetic report)")
-                checks.write_text("PASS: cluster-isolation: duplicate\n" * 17)
+                checks.write_text("PASS: cluster-isolation: duplicate\n" * 18)
                 assert subprocess.run(gate, cwd=fixture, env=env, capture_output=True).returncode != 0
                 print("report gate: duplicate checks rejected PASS (synthetic report)")
-                names = ("creation owners recreation drift restart http ingress pr-integration metrics guardrails readiness finalizer ttl-active "
+                names = ("creation owners recreation drift restart http ingress pr-integration metrics guardrails network readiness finalizer ttl-active "
                          "ttl-downtime manual-delete foreign-resources cluster-isolation").split()
                 checks.write_text("".join(f"PASS: {name}: synthetic fixture\n" for name in names))
                 assert subprocess.run(gate, cwd=fixture, env=env, capture_output=True).returncode == 0

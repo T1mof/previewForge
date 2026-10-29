@@ -52,11 +52,13 @@ def main():
         subprocess.run(["go", "build", "-o", str(executable), str(source)], check=True, cwd=ROOT)
         scenarios = ("fresh", "existing", "existing_kubeconfig", "existing_run", "invalid", "remote_docker", "remote_docker_host")
         if not WINDOWS:
-            scenarios += ("fresh_port", "invalid_port")
+            scenarios += ("fresh_port", "invalid_port", "fresh_calico", "invalid_cni")
         for scenario in scenarios:
             fixture = work / scenario
             (fixture / "scripts").mkdir(parents=True)
             (fixture / "bin").mkdir()
+            (fixture / "config" / "network-demo").mkdir(parents=True)
+            shutil.copy2(ROOT / "config/network-demo/operator-patch.yaml", fixture / "config/network-demo/operator-patch.yaml")
             tools = fixture / "tools"
             tools.mkdir()
             suffix = ".exe" if WINDOWS else ""
@@ -69,6 +71,8 @@ def main():
             shutil.copy2(ROOT / "scripts" / script_name, script)
             if not WINDOWS:
                 shutil.copy2(ROOT / "scripts" / "kind-lifecycle.sh", fixture / "scripts" / "kind-lifecycle.sh")
+                if scenario == "fresh_calico":
+                    (fixture / "scripts/install-calico.sh").write_text("pf_assert_owned || exit 1\nk get nodes\n")
             cluster = "production" if scenario == "invalid" else "previewforge-test-check"
             kubeconfig = fixture / "bin" / "runs" / cluster / "kubeconfig"
             if scenario == "existing_kubeconfig":
@@ -87,12 +91,13 @@ def main():
                        DOCKER_HOST="ssh://remote.example" if scenario == "remote_docker_host" else "",
                        PREVIEWFORGE_DEMO_HTTP_PORT="8080" if scenario == "fresh_port" else "8080\nnodes: []" if scenario == "invalid_port" else "",
                        PREVIEWFORGE_TEST_CLUSTER=cluster)
+            env["PREVIEWFORGE_KIND_CNI"] = "calico" if scenario == "fresh_calico" else "invalid" if scenario == "invalid_cni" else "kindnet"
             command = (["powershell", "-NoProfile", "-ExecutionPolicy", "Bypass", "-File", str(script), "-ClusterName", cluster]
                        if WINDOWS else ["bash", str(script)])
             result = subprocess.run(command, cwd=fixture, env=env, text=True, capture_output=True, timeout=30)
             calls = [json.loads(line) for line in log.read_text(encoding="utf-8").splitlines()] if log.exists() else []
             assert sentinel.read_text(encoding="utf-8") == "unrelated current context"
-            if scenario in ("fresh", "fresh_port"):
+            if scenario in ("fresh", "fresh_port", "fresh_calico"):
                 assert result.returncode == 0, result.stdout + result.stderr
                 kind_calls = [call for call in calls if call[0] == "kind"]
                 assert any(call[1:3] == ["create", "cluster"] for call in kind_calls)
@@ -117,6 +122,13 @@ def main():
                     assert config.resolve().is_relative_to(kubeconfig.parent.resolve())
                     value = config.read_text()
                     assert 'listenAddress: "127.0.0.1"' in value and 'hostPort: 8080' in value and 'containerPort: 30080' in value
+                elif scenario == "fresh_calico":
+                    config = Path(option(create, "--config"))
+                    assert config.resolve().is_relative_to(kubeconfig.parent.resolve())
+                    assert 'disableDefaultCNI: true' in config.read_text()
+                    assert 'podSubnet: "10.244.0.0/16"' in config.read_text()
+                    assert "--wait" not in create, "CNI must install before waiting for node readiness"
+                    assert any(call[0] == "kubectl" and call[-2:] == ["get", "nodes"] for call in calls)
                 else:
                     assert "--config" not in create
             else:

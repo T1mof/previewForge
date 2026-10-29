@@ -73,6 +73,16 @@ rules:
   - patch
   - watch
 - apiGroups:
+  - networking.k8s.io
+  resources:
+  - networkpolicies
+  verbs:
+  - create
+  - get
+  - list
+  - patch
+  - watch
+- apiGroups:
   - platform.previewforge.dev
   resources:
   - previewenvironments

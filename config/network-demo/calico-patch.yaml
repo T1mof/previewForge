@@ -1,0 +1,33 @@
+apiVersion: apps/v1
+kind: DaemonSet
+metadata:
+  name: calico-node
+  namespace: kube-system
+spec:
+  template:
+    spec:
+      containers:
+        - name: calico-node
+          env:
+            - name: CALICO_IPV4POOL_CIDR
+              value: "10.244.0.0/16"
+            - name: CALICO_IPV4POOL_IPIP
+              value: "Never"
+            - name: CALICO_IPV4POOL_VXLAN
+              value: "Always"
+            - name: CLUSTER_TYPE
+              value: "k8s"
+          livenessProbe:
+            exec:
+              command: [calico, component, node, health, --felix-live]
+          readinessProbe:
+            exec:
+              command: [calico, component, node, health, --felix-ready]
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: calico-config
+  namespace: kube-system
+data:
+  calico_backend: "vxlan"

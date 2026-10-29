@@ -48,7 +48,7 @@ func fixture(t *testing.T, objects ...client.Object) (*PreviewEnvironmentReconci
 	t.Helper()
 	s := testScheme(t)
 	c := fake.NewClientBuilder().WithScheme(s).WithStatusSubresource(&platformv1.PreviewEnvironment{}, &appsv1.Deployment{}).WithObjects(objects...).Build()
-	return &PreviewEnvironmentReconciler{Client: c, APIReader: c, Scheme: s, Now: func() time.Time { return testNow }}, c
+	return &PreviewEnvironmentReconciler{Client: c, APIReader: c, Scheme: s, Now: func() time.Time { return testNow }, Network: testNetworkConfig()}, c
 }
 
 func reconcile(t *testing.T, r *PreviewEnvironmentReconciler, name string) ctrl.Result {

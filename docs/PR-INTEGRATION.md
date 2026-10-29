@@ -57,6 +57,8 @@ Fork PR и авторы вне OWNER/MEMBER/COLLABORATOR пропускаютс�
 
 ## Что потребуется для включения
 
+В кластере нужен CNI с реальным NetworkPolicy enforcement, Pod-based DNS и настроенные operator gateway flags, соответствующие Namespace/Pod selector установленного Ingress controller. PR image не получает публичный egress по умолчанию. Этот контракт не активирует workflow; [настройка сети](NETWORK-ISOLATION.md).
+
 1. Новый отдельный demo-кластер, доступный GitHub-hosted runner, с установленными PreviewForge и Ingress controller, DNS на выделенном preview-домене. Текущий example image рассчитан на linux/amd64. User/production kubeconfig не используется.
 2. Администратор устанавливает optional `config/pr-deployer` и фиксирует UID source Namespace. Первичная установка должна создавать новые ресурсы; неизвестный существующий source Namespace или одноимённый RBAC нельзя автоматически принимать под управление. Для обычного обновления source Namespace не пересоздаётся.
 3. Отдельный kubeconfig только для ServiceAccount `previewforge-pr-deployer`. API server CA проверяется, context задан явно. Временный TokenRequest token нужно обновлять после истечения; окончательная схема короткоживущего доступа/OIDC зависит от выбранной площадки.

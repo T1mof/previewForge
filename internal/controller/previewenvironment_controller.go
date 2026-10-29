@@ -31,6 +31,7 @@ type PreviewEnvironmentReconciler struct {
 	APIReader client.Reader
 	Scheme    *runtime.Scheme
 	Now       func() time.Time
+	Network   NetworkConfig
 }
 
 // +kubebuilder:rbac:groups=platform.previewforge.dev,resources=previewenvironments,verbs=get;list;watch;update;patch;delete
@@ -41,6 +42,7 @@ type PreviewEnvironmentReconciler struct {
 // +kubebuilder:rbac:groups="",resources=resourcequotas;limitranges,verbs=get;list;watch;create;patch
 // +kubebuilder:rbac:groups=apps,resources=deployments,verbs=get;list;watch;create;update;patch
 // +kubebuilder:rbac:groups=networking.k8s.io,resources=ingresses,verbs=get;list;watch;create;patch;delete
+// +kubebuilder:rbac:groups=networking.k8s.io,resources=networkpolicies,verbs=get;list;watch;create;patch
 // +kubebuilder:rbac:groups=authentication.k8s.io,resources=tokenreviews,verbs=create
 // +kubebuilder:rbac:groups=authorization.k8s.io,resources=subjectaccessreviews,verbs=create
 
@@ -102,8 +104,12 @@ func (r *PreviewEnvironmentReconciler) Reconcile(ctx context.Context, req ctrl.R
 	if err != nil {
 		return r.failure(ctx, p, "GuardrailsFailed", err)
 	}
-	if guardrailsPending {
-		if err := r.updateStatus(ctx, p, platformv1.PhaseDeploying, "ResourceTerminating", "waiting for managed quota or LimitRange deletion", 0); err != nil {
+	networkPending, err := r.reconcileNetwork(ctx, p, ns.Name, spec)
+	if err != nil {
+		return r.failure(ctx, p, "NetworkPolicyFailed", err)
+	}
+	if guardrailsPending || networkPending {
+		if err := r.updateStatus(ctx, p, platformv1.PhaseDeploying, "ResourceTerminating", "waiting for managed guardrail or network policy deletion", 0); err != nil {
 			return ctrl.Result{}, err
 		}
 		return ctrl.Result{RequeueAfter: r.nextPoll(deadline.Time)}, nil
@@ -267,6 +273,7 @@ func (r *PreviewEnvironmentReconciler) SetupWithManager(mgr ctrl.Manager) error 
 		Owns(&corev1.ResourceQuota{}).
 		Owns(&corev1.LimitRange{}).
 		Owns(&networkingv1.Ingress{}).
+		Owns(&networkingv1.NetworkPolicy{}).
 		WithOptions(controller.Options{MaxConcurrentReconciles: 4}).
 		Complete(r)
 }

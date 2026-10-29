@@ -5,6 +5,11 @@ source scripts/kind-lifecycle.sh
 for tool in docker kind kubectl; do
   command -v "$tool" >/dev/null || { echo "Missing prerequisite: $tool" >&2; exit 1; }
 done
+kind_cni=${PREVIEWFORGE_KIND_CNI:-kindnet}
+[[ "$kind_cni" == kindnet || "$kind_cni" == calico ]] || { echo 'PREVIEWFORGE_KIND_CNI must be kindnet or calico' >&2; exit 1; }
+if [[ "$kind_cni" == calico ]]; then
+  for tool in curl sha256sum; do command -v "$tool" >/dev/null || { echo "Missing prerequisite: $tool" >&2; exit 1; }; done
+fi
 pf_local_docker
 docker info >/dev/null
 if [[ -n ${PREVIEWFORGE_DEMO_HTTP_PORT:-} ]]; then
@@ -25,22 +30,34 @@ done <<< "$clusters"
 [[ ! -e "$(dirname "$kubeconfig")" ]] || { echo 'Refusing to overwrite an existing run directory' >&2; exit 1; }
 pf_claim_cluster
 printf '%s\n' "$clusters" > "$(dirname "$kubeconfig")/.other-clusters"
-kind_args=(--name "$cluster" --image kindest/node:v1.37.0@sha256:a1ed56cfb0e7b93589bdf97c8cd566405a265939e3620fc4f5de89adff580ae5 --kubeconfig "$kubeconfig" --wait 120s)
-if [[ -n ${PREVIEWFORGE_DEMO_HTTP_PORT:-} ]]; then
+kind_args=(--name "$cluster" --image kindest/node:v1.37.0@sha256:a1ed56cfb0e7b93589bdf97c8cd566405a265939e3620fc4f5de89adff580ae5 --kubeconfig "$kubeconfig")
+if [[ "$kind_cni" == kindnet ]]; then kind_args+=(--wait 120s); fi
+if [[ -n ${PREVIEWFORGE_DEMO_HTTP_PORT:-} || "$kind_cni" == calico ]]; then
   cat > "$(dirname "$kubeconfig")/kind.yaml" <<EOF
 kind: Cluster
 apiVersion: kind.x-k8s.io/v1alpha4
+EOF
+  if [[ "$kind_cni" == calico ]]; then
+    printf 'networking:\n  disableDefaultCNI: true\n  podSubnet: "10.244.0.0/16"\n' >> "$(dirname "$kubeconfig")/kind.yaml"
+  fi
+  cat >> "$(dirname "$kubeconfig")/kind.yaml" <<'EOF'
 nodes:
   - role: control-plane
+EOF
+  if [[ -n ${PREVIEWFORGE_DEMO_HTTP_PORT:-} ]]; then
+    cat >> "$(dirname "$kubeconfig")/kind.yaml" <<EOF
     extraPortMappings:
       - containerPort: 30080
         hostPort: $PREVIEWFORGE_DEMO_HTTP_PORT
         listenAddress: "127.0.0.1"
         protocol: TCP
 EOF
+  fi
   kind_args+=(--config "$(dirname "$kubeconfig")/kind.yaml")
 fi
 kind create cluster "${kind_args[@]}"
+k() { kubectl --kubeconfig "$kubeconfig" --context "$context" --request-timeout=15s "$@"; }
+if [[ "$kind_cni" == calico ]]; then source scripts/install-calico.sh; fi
 cp "$kubeconfig" bin/kind.kubeconfig
 image="previewforge:$cluster"
 overlay=$(dirname "$kubeconfig")
@@ -50,10 +67,12 @@ resources:
 images:
   - name: previewforge
     newTag: $cluster
+patches:
+  - path: operator-network.yaml
 EOF
+cp config/network-demo/operator-patch.yaml "$overlay/operator-network.yaml"
 docker build -t "$image" .
 kind load docker-image "$image" --name "$cluster"
-k() { kubectl --kubeconfig "$kubeconfig" --context "$context" --request-timeout=15s "$@"; }
 k apply -k "$overlay"
 k wait --for=condition=Established crd/previewenvironments.platform.previewforge.dev --timeout=60s
 k -n previewforge-system rollout status deployment/previewforge-controller-manager --timeout=120s

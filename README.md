@@ -26,6 +26,7 @@ flowchart LR
 - Namespace с именем на основе имени и UID CR; проверка controller owner reference перед изменениями.
 - Deployment с CPU/memory requests и limits, TCP readiness probe; Service типа ClusterIP.
 - Настраиваемые CPU/memory, ResourceQuota/LimitRange и профили Pod Security baseline/restricted: [контракт и ограничения](docs/RESOURCE-CONTROLS.md).
+- Управляемые NetworkPolicy: внутрисредовой трафик, ограниченный DNS и доверенный Ingress gateway; Calico e2e проверяет enforcement: [контракт сети](docs/NETWORK-ISOLATION.md).
 - Необязательный Ingress с явными host/class, ссылкой на TLS Secret и `status.url`; безопасное отключение, исправление drift и watch восстановления.
 - Фазы `Pending`, `Deploying`, `Ready`, `Failed`, `Expired`, condition `Ready`, диагностические сообщения.
 - Исправление управляемых полей, восстановление удалённых ресурсов, повторная обработка ошибок API.
@@ -35,7 +36,7 @@ flowchart LR
 - Предметные inventory metrics из Kubernetes, HTTPS endpoint с authn/authz, optional Prometheus/Grafana demo и dashboard: [наблюдаемость](docs/OBSERVABILITY.md).
 - CLI `previewctl`, отдельный deployer RBAC, example Go HTTP server и выключенный PR workflow: immutable image, актуальный head, update/close и проверка владельца по UID. [Подготовка отдельного кластера](docs/PR-INTEGRATION.md); размещение и внешний PR lifecycle будут проверены позже.
 
-Namespace обеспечивает разделение ресурсов и удаление окружения целиком. Сетевая изоляция между Namespace ещё не реализована: для неё необходимы NetworkPolicy и совместимый CNI. По умолчанию приложение доступно внутри кластера; внешний HTTP(S) включается через необязательный Ingress. API, URL и локальный demo описаны в [INGRESS.md](docs/INGRESS.md).
+Namespace обеспечивает разделение ресурсов и удаление окружения целиком. NetworkPolicy закрывают трафик между окружениями и публичный egress, сохраняя связь внутри Namespace и DNS к настроенным Pod; реальное исполнение требует поддерживающего CNI. Внешний HTTP(S) разрешается только через настроенный администратором gateway при включённом Ingress. Native PowerShell/kindnet demo не обеспечивает enforcement; полный Bash e2e использует Calico. API, URL и локальный demo описаны в [INGRESS.md](docs/INGRESS.md), правила и границы — в [NETWORK-ISOLATION.md](docs/NETWORK-ISOLATION.md).
 
 ## Зависимости и структура
 

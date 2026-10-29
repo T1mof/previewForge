@@ -29,7 +29,7 @@ manifests: generate
 	$(LOCALBIN)/controller-gen rbac:roleName=previewforge-metrics-reader paths=./internal/monitoring output:rbac:artifacts:config=config/metrics-reader
 
 fmt:
-	gofmt -w api cmd internal examples
+	gofmt -w api cmd internal examples test
 
 vet:
 	go vet ./...
@@ -60,10 +60,10 @@ docker-build:
 	docker build -t $(IMG) .
 
 kind-demo: $(LOCALBIN)/kind
-	PATH="$(LOCALBIN):$$PATH" bash scripts/kind-demo.sh
+	PREVIEWFORGE_KIND_CNI="$${PREVIEWFORGE_KIND_CNI:-calico}" PATH="$(LOCALBIN):$$PATH" bash scripts/kind-demo.sh
 
 ingress-demo: $(LOCALBIN)/kind
-	PATH="$(LOCALBIN):$$PATH" bash scripts/ingress-demo.sh
+	PREVIEWFORGE_KIND_CNI="$${PREVIEWFORGE_KIND_CNI:-calico}" PATH="$(LOCALBIN):$$PATH" bash scripts/ingress-demo.sh
 
 test-e2e: $(LOCALBIN)/kind build
 	PATH="$(LOCALBIN):$$PATH" bash scripts/e2e.sh

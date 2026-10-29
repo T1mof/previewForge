@@ -21,16 +21,26 @@ import (
 func main() {
 	var metricsAddr, metricsCertDir, probeAddr, leaderNamespace string
 	var leaderElection bool
+	var dnsNamespace, dnsSelector, gatewayNamespace, gatewaySelector string
 	flag.StringVar(&metricsAddr, "metrics-bind-address", "0", "Metrics address; 0 disables the server")
 	flag.StringVar(&metricsCertDir, "metrics-cert-path", "", "Directory with tls.crt/tls.key; empty uses an ephemeral self-signed metrics certificate")
 	flag.StringVar(&probeAddr, "health-probe-bind-address", ":8081", "Health probe address")
 	flag.BoolVar(&leaderElection, "leader-elect", false, "Enable leader election")
 	flag.StringVar(&leaderNamespace, "leader-election-namespace", "previewforge-system", "Namespace for leader election Lease")
+	flag.StringVar(&dnsNamespace, "dns-namespace", "kube-system", "Namespace containing Pod-based cluster DNS")
+	flag.StringVar(&dnsSelector, "dns-pod-selector", "k8s-app=kube-dns", "Non-empty selector for cluster DNS Pods")
+	flag.StringVar(&gatewayNamespace, "ingress-controller-namespace", "", "Trusted Ingress controller namespace; required for preview Ingress")
+	flag.StringVar(&gatewaySelector, "ingress-controller-pod-selector", "", "Non-empty trusted Ingress controller Pod selector")
 	logOptions := zap.Options{}
 	logOptions.BindFlags(flag.CommandLine)
 	flag.Parse()
 	ctrl.SetLogger(zap.New(zap.UseFlagOptions(&logOptions)))
 	log := ctrl.Log.WithName("setup")
+	network, err := controller.NewNetworkConfig(dnsNamespace, dnsSelector, gatewayNamespace, gatewaySelector)
+	if err != nil {
+		log.Error(err, "invalid network configuration")
+		os.Exit(1)
+	}
 	scheme := runtime.NewScheme()
 	if err := clientgoscheme.AddToScheme(scheme); err != nil {
 		log.Error(err, "register Kubernetes scheme")
@@ -52,7 +62,7 @@ func main() {
 		log.Error(err, "create manager")
 		os.Exit(1)
 	}
-	r := &controller.PreviewEnvironmentReconciler{Client: mgr.GetClient(), APIReader: mgr.GetAPIReader(), Scheme: scheme}
+	r := &controller.PreviewEnvironmentReconciler{Client: mgr.GetClient(), APIReader: mgr.GetAPIReader(), Scheme: scheme, Network: network}
 	if err := metrics.Registry.Register(monitoring.NewInventory(mgr.GetAPIReader())); err != nil {
 		log.Error(err, "register inventory metrics")
 		os.Exit(1)

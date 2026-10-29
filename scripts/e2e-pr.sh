@@ -72,15 +72,15 @@ pr_namespace_uid=$(k get namespace "$pr_namespace" -o jsonpath='{.metadata.uid}'
 pr_http() {
   local name=$1 revision=$2 overrides
   printf -v overrides '{"spec":{"automountServiceAccountToken":false,"securityContext":{"runAsNonRoot":true,"runAsUser":65534,"seccompProfile":{"type":"RuntimeDefault"}},"containers":[{"name":"%s","securityContext":{"allowPrivilegeEscalation":false,"capabilities":{"drop":["ALL"]}}}]}}' "$name"
-  k -n "$pr_namespace" run "$name" --restart=Never --image=busybox:1.37.0 \
+  k -n previewforge-e2e-clients run "$name" --restart=Never --image=busybox:1.37.0 \
     --override-type=strategic --overrides="$overrides" \
     --command -- sh -ec \
     "for i in \$(seq 1 30); do if wget -q -O /tmp/response -T 5 --header='Host: $pr_host' http://traefik.previewforge-ingress-system.svc.cluster.local && grep -q '$revision' /tmp/response && wget -q -O /tmp/health -T 5 --header='Host: $pr_host' http://traefik.previewforge-ingress-system.svc.cluster.local/healthz && grep -qx ok /tmp/health; then cat /tmp/response /tmp/health; exit 0; fi; sleep 2; done; exit 1"
-  if ! k -n "$pr_namespace" wait --for=jsonpath='{.status.phase}'=Succeeded pod/"$name" --timeout=180s; then
-    k -n "$pr_namespace" logs "$name" > "$directory/artifacts/pr-http-failure-$name.txt" 2>&1 || true
+  if ! k -n previewforge-e2e-clients wait --for=jsonpath='{.status.phase}'=Succeeded pod/"$name" --timeout=180s; then
+    k -n previewforge-e2e-clients logs "$name" > "$directory/artifacts/pr-http-failure-$name.txt" 2>&1 || true
     return 1
   fi
-  k -n "$pr_namespace" logs "$name" >> "$directory/artifacts/pr-http.txt"
+  k -n previewforge-e2e-clients logs "$name" >> "$directory/artifacts/pr-http.txt"
 }
 pr_http pr-first "$first_revision"
 "$previewctl" apply "${common[@]}" --source-uid "$source_uid" --image "$next_image" --revision "$next_revision" --replicas 2 "${spec[@]}" > "$directory/artifacts/pr-update.json"

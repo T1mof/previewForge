@@ -90,6 +90,14 @@ CLI связывает каждую операцию с явно указанн�
 
 ## 2026-10-28 — Фиксированный Namespace budget и явный restricted профиль
 
+Последующее сетевое ограничение описано отдельно: [NETWORK-ISOLATION.md](NETWORK-ISOLATION.md).
+
 ResourceQuota имеет фиксированный бюджет для десяти максимальных реплик, одного surge Pod и четырёх debug Pod с defaults. Динамическое уменьшение quota одновременно с изменением ресурсов может заблокировать rollout из-за старых Pod; фиксированный budget устраняет эту зависимость. LimitRange ограничивает и заполняет ресурсы вручную созданных контейнеров. CEL и Go validation ограничивают ресурсы приложения; quota не резервирует физическую мощность и не ограничивает число окружений в кластере.
 
 Default baseline сохраняет обычный nginx. Restricted требует совместимый non-root image, применяется к PR example и не допускает downgrade через CRD; уже более строгий Namespace или новая версия PSA не ослабляются. Operator владеет всей PodSpec и восстанавливает безопасную конфигурацию, включая удаление неописанных API полей. Права quota/LimitRange генерируются из markers: get/list/watch/create/patch, без delete или status write. Envtest проверяет API/watch/RBAC, реальное admission требует kind. Контракт и пределы защиты — в [RESOURCE-CONTROLS.md](RESOURCE-CONTROLS.md).
+
+## 2026-10-29 — Стандартные NetworkPolicy и административная gateway identity
+
+Две постоянно существующие политики разделяют isolation всего Namespace и gateway-доступ к app Pod. Это позволяет отзывать Ingress allow обычным optimistic patch без удаления политики и без открытия ingress по умолчанию. DNS и gateway требуют одновременно правильный Namespace и Pod selector; их конфигурацию задаёт администратор flags, а не автор CR. Без gateway config оператор всё равно создаёт isolation/пустой gateway allow, сообщает ошибку и не запускает Deployment. Дополнительные allow policies и admin deletion остаются границами защиты, поскольку стандартные правила аддитивны и CNI согласует их асинхронно.
+
+Продукт использует только networking/v1 API и не зависит от Calico CRD. Calico 3.33.0 выбран для свежего kind e2e по опубликованной поддержке Kubernetes 1.37; manifest checksum и image digests закреплены. CNI запускается до ожидания NodeReady, иначе возникает зависимость по кругу. Ingress HTTP-клиенты теста вынесены из изолированного preview Namespace. Test-only Go probe проверяет UDP/TCP DNS и транспортные отказы; HTTP 403 не считается enforcement. Публичный target и отдельный witness доступны снаружи до/после отрицательной проверки, чтобы не принять недоступный сервер за работу политики.

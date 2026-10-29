@@ -41,8 +41,9 @@ Copy-Item -LiteralPath $taskConfig -Destination (Join-Path $taskRoot 'bin\kind.k
 $taskImage = "previewforge:$ClusterName"
 $taskOverlay = Split-Path -Parent $taskConfig
 [System.IO.File]::WriteAllLines((Join-Path $taskOverlay 'kustomization.yaml'), @(
-    'resources:', '  - ../../../config/default', 'images:', '  - name: previewforge', "    newTag: $ClusterName"
+    'resources:', '  - ../../../config/default', 'images:', '  - name: previewforge', "    newTag: $ClusterName", 'patches:', '  - path: operator-network.yaml'
 ), (New-Object System.Text.UTF8Encoding $false))
+Copy-Item -LiteralPath (Join-Path $taskRoot 'config\network-demo\operator-patch.yaml') -Destination (Join-Path $taskOverlay 'operator-network.yaml')
 Invoke-Checked { docker build -t $taskImage . }
 Invoke-Checked { & $taskKind load docker-image $taskImage --name $ClusterName }
 Invoke-Checked { kubectl --kubeconfig $taskConfig --context $taskContext apply -k $taskOverlay }
@@ -52,4 +53,5 @@ Invoke-Checked { kubectl --kubeconfig $taskConfig --context $taskContext apply -
 Invoke-Checked { kubectl --kubeconfig $taskConfig --context $taskContext wait --for=condition=Ready previewenvironment/pr-42 --timeout=300s }
 Invoke-Checked { kubectl --kubeconfig $taskConfig --context $taskContext get previewenvironment/pr-42 }
 Write-Host "Cluster: $ClusterName; context: $taskContext; kubeconfig: $taskConfig"
+Write-Host 'This native demo uses kindnet without NetworkPolicy enforcement. Use the Calico Bash demo for network isolation; see docs/NETWORK-ISOLATION.md.'
 Write-Host "To remove only this test cluster: .\bin\kind.exe delete cluster --name $ClusterName"

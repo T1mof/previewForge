@@ -2,6 +2,7 @@
 set -euo pipefail
 cd "$(dirname "$0")/.."
 source scripts/kind-lifecycle.sh
+export PREVIEWFORGE_KIND_CNI=${PREVIEWFORGE_KIND_CNI:-calico}
 # A fresh cluster for every run; demo refuses existing clusters.
 export PREVIEWFORGE_TEST_CLUSTER=${PREVIEWFORGE_TEST_CLUSTER:-previewforge-test-$(od -An -N4 -tx1 /dev/urandom | tr -d ' \n')}
 export PREVIEWFORGE_RUN_TOKEN=${PREVIEWFORGE_RUN_TOKEN:-$(od -An -N16 -tx1 /dev/urandom | tr -d ' \n')}
@@ -27,6 +28,9 @@ finish() {
       k get deployments,pods,services -A -o wide > "$directory/artifacts/workloads.txt" 2>&1 || true
       k get pods -A -o yaml > "$directory/artifacts/pods.yaml" 2>&1 || true
       k get ingresses -A -o yaml > "$directory/artifacts/ingresses.yaml" 2>&1 || true
+      k get networkpolicies -A -o yaml > "$directory/artifacts/networkpolicies.yaml" 2>&1 || true
+      k -n kube-system get daemonset/calico-node deployment/calico-kube-controllers -o yaml > "$directory/artifacts/calico.yaml" 2>&1 || true
+      k -n kube-system logs daemonset/calico-node -c calico-node --tail=200 > "$directory/artifacts/calico.log" 2>&1 || true
       k get resourcequotas,limitranges -A -o yaml > "$directory/artifacts/guardrails.yaml" 2>&1 || true
       k get events -A --sort-by=.lastTimestamp > "$directory/artifacts/events.txt" 2>&1 || true
       k -n previewforge-system logs deployment/previewforge-controller-manager --tail=300 > "$directory/artifacts/operator.log" 2>&1 || true
@@ -163,6 +167,7 @@ EOF
 # A running container with a closed readiness port must not become CR Ready.
 source scripts/e2e-metrics.sh
 source scripts/e2e-guardrails.sh
+source scripts/e2e-network.sh
 
 create_preview e2e-readiness 3600 81
 readiness_ns=''
