@@ -18,4 +18,6 @@ export GOTMPDIR="$PWD/.cache/linux/tmp"
 mkdir -p "$GOTMPDIR" bin/linux
 go version
 gcc --version | head -n 1
-make LOCALBIN="$PWD/bin/linux" vet build test-race test-integration
+bash scripts/install-helm.sh
+export PATH="$PWD/bin/linux:$PATH"
+make LOCALBIN="$PWD/bin/linux" vet build test-race test-integration test-chart

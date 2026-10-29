@@ -6,11 +6,13 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"strings"
 
 	admissionv1 "k8s.io/api/admission/v1"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
+	"k8s.io/apimachinery/pkg/util/validation"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	webadmission "sigs.k8s.io/controller-runtime/pkg/webhook/admission"
 
@@ -23,8 +25,22 @@ const Path = "/validate-ownership"
 
 // Ownership uses an uncached API reader. Its ServiceAccount has only get access.
 type Ownership struct {
-	Reader        client.Reader
-	NamespaceName func(*platformv1.PreviewEnvironment) string
+	Reader           client.Reader
+	NamespaceName    func(*platformv1.PreviewEnvironment) string
+	operatorIdentity string
+}
+
+// NewOwnership accepts only a concrete ServiceAccount identity configured by
+// the administrator, matching the admission matchConditions in the install.
+func NewOwnership(reader client.Reader, namespaceName func(*platformv1.PreviewEnvironment) string, identity string) (*Ownership, error) {
+	parts := strings.Split(identity, ":")
+	if len(parts) != 4 || parts[0] != "system" || parts[1] != "serviceaccount" || len(validation.IsDNS1123Label(parts[2])) != 0 || len(validation.IsDNS1123Subdomain(parts[3])) != 0 {
+		return nil, fmt.Errorf("operator identity must be system:serviceaccount:<namespace>:<name>")
+	}
+	if reader == nil || namespaceName == nil {
+		return nil, fmt.Errorf("API reader and Namespace naming function are required")
+	}
+	return &Ownership{Reader: reader, NamespaceName: namespaceName, operatorIdentity: identity}, nil
 }
 
 func owner(obj metav1.Object) (*metav1.OwnerReference, error) {
@@ -36,7 +52,10 @@ func owner(obj metav1.Object) (*metav1.OwnerReference, error) {
 }
 
 func (h *Ownership) Handle(ctx context.Context, req webadmission.Request) webadmission.Response {
-	if req.UserInfo.Username != OperatorIdentity {
+	if h.operatorIdentity == "" {
+		return webadmission.Errored(http.StatusInternalServerError, fmt.Errorf("operator identity is not configured"))
+	}
+	if req.UserInfo.Username != h.operatorIdentity {
 		return webadmission.Allowed("identity outside operator boundary")
 	}
 	if req.SubResource != "" {

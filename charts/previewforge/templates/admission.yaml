@@ -1,0 +1,136 @@
+{{- if .Values.admission.enabled -}}
+{{- $ca := required "admission.tls.caBundle is required when admission is enabled" .Values.admission.tls.caBundle -}}
+{{- $root := . -}}
+{{- range $name := list "namespaces" "children" "deployments" "services" -}}
+{{- $policy := $root.Files.Get (printf "files/generated/admission/%s.yaml" $name) | fromYaml -}}
+{{- $_ := set (index $policy.spec.matchConditions 0) "expression" (include "previewforge.identityExpression" $root) }}
+---
+apiVersion: admissionregistration.k8s.io/v1
+kind: ValidatingAdmissionPolicy
+metadata:
+  name: {{ $policy.metadata.name }}
+  labels:
+    {{- include "previewforge.labels" $root | nindent 4 }}
+spec:
+  {{- $policy.spec | toYaml | nindent 2 }}
+{{ end }}
+{{- range $doc := splitList "\n---\n" (.Files.Get "files/generated/admission/bindings.yaml") -}}
+{{- $binding := fromYaml $doc }}
+---
+apiVersion: admissionregistration.k8s.io/v1
+kind: ValidatingAdmissionPolicyBinding
+metadata:
+  name: {{ $binding.metadata.name }}
+  labels:
+    {{- include "previewforge.labels" $root | nindent 4 }}
+spec:
+  {{- $binding.spec | toYaml | nindent 2 }}
+{{ end }}
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: previewforge-admission
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "previewforge.labels" . | nindent 4 }}
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: previewforge-admission
+  labels:
+    {{- include "previewforge.labels" . | nindent 4 }}
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: previewforge-admission-reader
+subjects:
+  - kind: ServiceAccount
+    name: previewforge-admission
+    namespace: {{ .Release.Namespace }}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: previewforge-admission
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "previewforge.labels" . | nindent 4 }}
+spec:
+  selector:
+    app.kubernetes.io/name: previewforge-admission
+    app.kubernetes.io/instance: {{ .Release.Name | quote }}
+  ports:
+    - {name: https, port: 443, targetPort: 9443}
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: previewforge-admission
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "previewforge.labels" . | nindent 4 }}
+spec:
+  replicas: {{ .Values.admission.replicaCount }}
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: previewforge-admission
+      app.kubernetes.io/instance: {{ .Release.Name | quote }}
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: previewforge-admission
+        {{- include "previewforge.labels" . | nindent 8 }}
+    spec:
+      serviceAccountName: previewforge-admission
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 65532
+        seccompProfile: {type: RuntimeDefault}
+      containers:
+        - name: admission
+          image: {{ include "previewforge.image" . | quote }}
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          command: [/admission]
+          args:
+            - --cert-dir=/certs
+            - --operator-identity={{ include "previewforge.operatorIdentity" . }}
+          ports:
+            - {name: https, containerPort: 9443}
+          readinessProbe:
+            tcpSocket: {port: https}
+          livenessProbe:
+            tcpSocket: {port: https}
+            initialDelaySeconds: 10
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities: {drop: [ALL]}
+          resources:
+            {{- toYaml .Values.admission.resources | nindent 12 }}
+          volumeMounts:
+            - {name: certs, mountPath: /certs, readOnly: true}
+      volumes:
+        - name: certs
+          secret:
+            secretName: {{ .Values.admission.tls.secretName | quote }}
+{{- range $doc := splitList "\n---\n" (.Files.Get "files/generated/admission/server.yaml") -}}
+{{- $config := fromYaml $doc -}}
+{{- if eq $config.kind "ValidatingWebhookConfiguration" -}}
+{{- $hook := index $config.webhooks 0 -}}
+{{- $_ := set (index $hook.matchConditions 0) "expression" (include "previewforge.identityExpression" $root) -}}
+{{- $_ := set $hook.clientConfig.service "namespace" $root.Release.Namespace -}}
+{{- $_ := set $hook.clientConfig "caBundle" $ca }}
+---
+apiVersion: admissionregistration.k8s.io/v1
+kind: ValidatingWebhookConfiguration
+metadata:
+  name: {{ $config.metadata.name }}
+  labels:
+    {{- include "previewforge.labels" $root | nindent 4 }}
+webhooks:
+  {{- $config.webhooks | toYaml | nindent 2 }}
+{{ end }}
+{{- end }}
+{{- end }}

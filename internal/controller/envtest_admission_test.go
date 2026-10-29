@@ -57,7 +57,11 @@ func TestAdmissionEnvtest(t *testing.T) {
 	ctx := context.Background()
 	reader := envtestAdmissionReader(t, env, admin, scheme)
 	server := webhook.NewServer(webhook.Options{Host: env.WebhookInstallOptions.LocalServingHost, Port: env.WebhookInstallOptions.LocalServingPort, CertDir: env.WebhookInstallOptions.LocalServingCertDir})
-	server.Register(boundary.Path, &webadmission.Webhook{Handler: &boundary.Ownership{Reader: reader, NamespaceName: NamespaceName}})
+	ownership, err := boundary.NewOwnership(reader, NamespaceName, boundary.OperatorIdentity)
+	if err != nil {
+		t.Fatal(err)
+	}
+	server.Register(boundary.Path, &webadmission.Webhook{Handler: ownership})
 	serverCtx, cancelServer := context.WithCancel(ctx)
 	serverDone := make(chan error, 1)
 	go func() { serverDone <- server.Start(serverCtx) }()

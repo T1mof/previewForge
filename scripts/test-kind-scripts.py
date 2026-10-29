@@ -91,7 +91,7 @@ def main():
                        PF_TEST_DOCKER_ENDPOINT="ssh://remote.example" if scenario == "remote_docker" else "unix:///var/run/docker.sock",
                        DOCKER_HOST="ssh://remote.example" if scenario == "remote_docker_host" else "",
                        PREVIEWFORGE_DEMO_HTTP_PORT="8080" if scenario == "fresh_port" else "8080\nnodes: []" if scenario == "invalid_port" else "",
-                       PREVIEWFORGE_TEST_CLUSTER=cluster)
+                       PREVIEWFORGE_TEST_CLUSTER=cluster, PREVIEWFORGE_INSTALLER="kustomize")
             env["PREVIEWFORGE_KIND_CNI"] = "calico" if scenario == "fresh_calico" else "invalid" if scenario == "invalid_cni" else "kindnet"
             command = (["powershell", "-NoProfile", "-ExecutionPolicy", "Bypass", "-File", str(script), "-ClusterName", cluster]
                        if WINDOWS else ["bash", str(script)])

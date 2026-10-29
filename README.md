@@ -80,6 +80,12 @@ make test-integration
 
 ## Быстрый запуск в kind
 
+Для установки через Helm подготовлен [chart](charts/previewforge) с настройками
+namespace, image, leader election, сети, HTTPS metrics и optional admission.
+Порядок работы с TLS, upgrade/rollback и сохранением CRD — в [HELM.md](docs/HELM.md).
+Новый Helm runtime milestone пока проходит проверку; результаты предыдущего
+проверенного admission source приведены выше.
+
 Нужны Linux/WSL или macOS, работающий Docker Engine, Go, make, kubectl и Bash. Скрипт создаёт новый кластер `previewforge-test-<random>`, отказывается использовать существующий и сохраняет kubeconfig в `bin/runs/<cluster>/kubeconfig` с удобной копией `bin/kind.kubeconfig`. Затем строит image, загружает его в kind и ждёт Ready.
 
 ```bash
@@ -109,7 +115,7 @@ PowerShell-скрипт при необходимости установит kin
 make test-e2e
 ```
 
-Полный e2e дополнительно требует Python 3 для проверки image metadata. `make build` собирает manager и `previewctl`; в Git Bash предварительно соберите `bin/previewctl.exe`, как показано в [VERIFICATION.md](docs/VERIFICATION.md).
+Полный e2e дополнительно требует Python 3 и Helm 4.3.1. `make build` собирает manager, `previewctl` и `admissioncert`; в Git Bash используйте бинарники в `bin/`, включая `helm.exe`. Linux installer `scripts/install-helm.sh` проверяет закреплённый SHA256. Full suite по умолчанию устанавливает Helm package и требует 20 check ID; явный `PREVIEWFORGE_INSTALLER=kustomize` запускает прежние 19 без проверки Helm lifecycle. [Подробности](docs/HELM.md).
 
 Он проверяет настоящие Ready/Pod и HTTP через Service DNS/ClusterIP, запрет Ready до готовности приложения, исправление replicas, восстановление Deployment, рестарт, TTL при работающем операторе и после простоя, удержание finalizer и отказ изменения/удаления чужих ресурсов. E2e сохраняет диагностику в `bin/runs/<cluster>/artifacts`, затем удаляет только созданный им кластер, в том числе при ошибке. Demo для ручной работы сохраняет кластер.
 

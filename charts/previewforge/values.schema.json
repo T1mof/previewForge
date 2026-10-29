@@ -1,0 +1,67 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "type": "object", "additionalProperties": false,
+  "required": ["image", "replicaCount", "resources", "network", "metrics", "admission"],
+  "properties": {
+    "image": {
+      "type": "object", "additionalProperties": false,
+      "required": ["repository", "tag", "digest", "pullPolicy"],
+      "properties": {
+        "repository": {"type": "string", "pattern": "^[A-Za-z0-9][A-Za-z0-9./:_-]*$"},
+        "tag": {"type": "string", "pattern": "^[A-Za-z0-9_][A-Za-z0-9_.-]{0,127}$"},
+        "digest": {"type": "string", "pattern": "^(sha256:[a-f0-9]{64})?$"},
+        "pullPolicy": {"enum": ["Always", "IfNotPresent", "Never"]}
+      }
+    },
+    "replicaCount": {"type": "integer", "minimum": 1, "maximum": 3},
+    "resources": {"$ref": "#/definitions/resources"},
+    "network": {
+      "type": "object", "additionalProperties": false,
+      "required": ["dnsNamespace", "dnsPodSelector", "ingressNamespace", "ingressPodSelector"],
+      "properties": {
+        "dnsNamespace": {"$ref": "#/definitions/namespace"},
+        "dnsPodSelector": {"type": "string", "minLength": 1, "pattern": "^[^\r\n]+$"},
+        "ingressNamespace": {"type": "string", "pattern": "^([a-z0-9]([-a-z0-9]*[a-z0-9])?)?$", "maxLength": 63},
+        "ingressPodSelector": {"type": "string", "pattern": "^[^\r\n]*$"}
+      },
+      "allOf": [
+        {"if": {"properties": {"ingressNamespace": {"minLength": 1}}}, "then": {"properties": {"ingressPodSelector": {"minLength": 1}}}},
+        {"if": {"properties": {"ingressPodSelector": {"minLength": 1}}}, "then": {"properties": {"ingressNamespace": {"minLength": 1}}}}
+      ]
+    },
+    "metrics": {
+      "type": "object", "additionalProperties": false, "required": ["enabled", "tlsSecretName"],
+      "properties": {"enabled": {"type": "boolean"}, "tlsSecretName": {"$ref": "#/definitions/optionalName"}}
+    },
+    "admission": {
+      "type": "object", "additionalProperties": false,
+      "required": ["enabled", "replicaCount", "tls", "resources"],
+      "properties": {
+        "enabled": {"type": "boolean"},
+        "replicaCount": {"type": "integer", "minimum": 1, "maximum": 3},
+        "resources": {"$ref": "#/definitions/resources"},
+        "tls": {
+          "type": "object", "additionalProperties": false, "required": ["secretName", "caBundle"],
+          "properties": {
+            "secretName": {"type": "string", "minLength": 1, "allOf": [{"$ref": "#/definitions/optionalName"}]},
+            "caBundle": {"type": "string", "pattern": "^[A-Za-z0-9+/=]*$"}
+          }
+        }
+      },
+      "if": {"properties": {"enabled": {"const": true}}},
+      "then": {"properties": {"tls": {"properties": {"caBundle": {"minLength": 1}}}}}
+    }
+  },
+  "definitions": {
+    "namespace": {"type": "string", "pattern": "^[a-z0-9]([-a-z0-9]*[a-z0-9])?$", "maxLength": 63},
+    "optionalName": {"type": "string", "pattern": "^([a-z0-9]([-a-z0-9.]*[a-z0-9])?)?$", "maxLength": 253},
+    "resources": {
+      "type": "object", "additionalProperties": false, "required": ["requests", "limits"],
+      "properties": {"requests": {"$ref": "#/definitions/quantities"}, "limits": {"$ref": "#/definitions/quantities"}}
+    },
+    "quantities": {
+      "type": "object", "additionalProperties": false, "required": ["cpu", "memory"],
+      "properties": {"cpu": {"type": ["string", "number"], "minLength": 1}, "memory": {"type": ["string", "number"], "minLength": 1}}
+    }
+  }
+}

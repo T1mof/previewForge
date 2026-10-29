@@ -6,7 +6,7 @@ KIND_VERSION := v0.33.0
 IMG ?= previewforge:dev
 LOCALBIN := $(CURDIR)/bin
 
-.PHONY: generate manifests fmt vet test test-race test-integration build run install deploy docker-build kind-demo ingress-demo test-e2e
+.PHONY: generate manifests fmt vet test test-race test-integration test-chart build run install deploy docker-build kind-demo ingress-demo test-e2e
 
 $(LOCALBIN):
 	mkdir -p $(LOCALBIN)
@@ -28,6 +28,7 @@ manifests: generate
 	$(LOCALBIN)/controller-gen rbac:roleName=previewforge-pr-deployer-role paths=./internal/prenvironment output:rbac:artifacts:config=config/pr-deployer
 	$(LOCALBIN)/controller-gen rbac:roleName=previewforge-metrics-reader paths=./internal/monitoring output:rbac:artifacts:config=config/metrics-reader
 	$(LOCALBIN)/controller-gen rbac:roleName=previewforge-admission-reader paths=./internal/admission output:rbac:artifacts:config=config/admission
+	python3 scripts/sync-chart-assets.py
 
 fmt:
 	gofmt -w api cmd internal examples test
@@ -49,6 +50,10 @@ build: | $(LOCALBIN)
 	go build -trimpath -o $(LOCALBIN)/previewctl ./cmd/previewctl
 	go build -trimpath -o $(LOCALBIN)/admissioncert ./cmd/admissioncert
 
+test-chart:
+	python3 scripts/sync-chart-assets.py --check
+	go test -tags=charttest ./test/chart -count=1 -v
+
 run:
 	go run ./cmd/manager
 
@@ -61,10 +66,10 @@ deploy:
 docker-build:
 	docker build -t $(IMG) .
 
-kind-demo: $(LOCALBIN)/kind
+kind-demo: $(LOCALBIN)/kind build
 	PREVIEWFORGE_KIND_CNI="$${PREVIEWFORGE_KIND_CNI:-calico}" PATH="$(LOCALBIN):$$PATH" bash scripts/kind-demo.sh
 
-ingress-demo: $(LOCALBIN)/kind
+ingress-demo: $(LOCALBIN)/kind build
 	PREVIEWFORGE_KIND_CNI="$${PREVIEWFORGE_KIND_CNI:-calico}" PATH="$(LOCALBIN):$$PATH" bash scripts/ingress-demo.sh
 
 test-e2e: $(LOCALBIN)/kind build

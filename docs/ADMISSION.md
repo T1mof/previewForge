@@ -25,15 +25,19 @@ EOF
 kubectl apply -k bin/admission-install
 ```
 
-The policies deliberately match the exact default identity
+Kustomize policies deliberately match the exact default identity
 `system:serviceaccount:previewforge-system:previewforge-controller-manager`.
-Changing the installation namespace or ServiceAccount requires changing all
-five identity match conditions and the webhook's `OperatorIdentity` constant
-before deployment. `config/default` alone
+Changing that installation namespace or ServiceAccount requires updating all
+five identity match conditions and the webhook `--operator-identity` flag.
+The handler validates a concrete ServiceAccount username and fails closed if
+not configured; it never falls back from an invalid identity. The
+[Helm chart](HELM.md) derives all five conditions and the server flag from the
+release namespace. `config/default` alone
 does not install these boundaries. Both disposable kind demo scripts use
 `config/hardened`; external PR deployment remains disabled by default.
 
-`admissioncert` is a demo helper: it creates a unique CA and serving certificate
+`admissioncert` is a demo helper: `--namespace` defaults to `previewforge-system`.
+It creates a unique CA and serving certificate
 valid for 48 hours, refuses to overwrite existing files, and stores the private
 key only in the run directory/Secret. Never upload these files as artifacts.
 A long-running installation must provision and rotate its own trusted TLS

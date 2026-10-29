@@ -1,0 +1,84 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: previewforge-controller-manager
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "previewforge.labels" . | nindent 4 }}
+spec:
+  replicas: {{ .Values.replicaCount }}
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: previewforge-controller-manager
+      app.kubernetes.io/instance: {{ .Release.Name | quote }}
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: previewforge-controller-manager
+        {{- include "previewforge.labels" . | nindent 8 }}
+    spec:
+      serviceAccountName: previewforge-controller-manager
+      terminationGracePeriodSeconds: 30
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 65532
+        seccompProfile: {type: RuntimeDefault}
+      containers:
+        - name: manager
+          image: {{ include "previewforge.image" . | quote }}
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          args:
+            - --leader-elect
+            - --leader-election-namespace={{ .Release.Namespace }}
+            - --health-probe-bind-address=:8081
+            - --metrics-bind-address={{ ternary ":8443" "0" .Values.metrics.enabled }}
+            - --dns-namespace={{ .Values.network.dnsNamespace }}
+            - {{ printf "--dns-pod-selector=%s" .Values.network.dnsPodSelector | quote }}
+            {{- if .Values.network.ingressNamespace }}
+            - --ingress-controller-namespace={{ .Values.network.ingressNamespace }}
+            - {{ printf "--ingress-controller-pod-selector=%s" .Values.network.ingressPodSelector | quote }}
+            {{- end }}
+            {{- if and .Values.metrics.enabled .Values.metrics.tlsSecretName }}
+            - --metrics-cert-path=/metrics-certs
+            {{- end }}
+          ports:
+            - {name: health, containerPort: 8081}
+            {{- if .Values.metrics.enabled }}
+            - {name: metrics, containerPort: 8443}
+            {{- end }}
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities: {drop: [ALL]}
+          resources:
+            {{- toYaml .Values.resources | nindent 12 }}
+          livenessProbe:
+            httpGet: {path: /healthz, port: health}
+            initialDelaySeconds: 10
+          readinessProbe:
+            httpGet: {path: /readyz, port: health}
+            initialDelaySeconds: 5
+          {{- if and .Values.metrics.enabled .Values.metrics.tlsSecretName }}
+          volumeMounts:
+            - {name: metrics-certs, mountPath: /metrics-certs, readOnly: true}
+      volumes:
+        - name: metrics-certs
+          secret:
+            secretName: {{ .Values.metrics.tlsSecretName | quote }}
+          {{- end }}
+{{- if .Values.metrics.enabled }}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: previewforge-metrics
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "previewforge.labels" . | nindent 4 }}
+spec:
+  selector:
+    app.kubernetes.io/name: previewforge-controller-manager
+    app.kubernetes.io/instance: {{ .Release.Name | quote }}
+  ports:
+    - {name: https, port: 8443, targetPort: metrics}
+{{- end }}

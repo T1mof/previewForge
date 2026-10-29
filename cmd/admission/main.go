@@ -18,8 +18,9 @@ import (
 )
 
 func main() {
-	var certDir string
+	var certDir, operatorIdentity string
 	flag.StringVar(&certDir, "cert-dir", "/certs", "Directory containing tls.crt and tls.key")
+	flag.StringVar(&operatorIdentity, "operator-identity", boundary.OperatorIdentity, "Exact operator ServiceAccount username, matching admission policies")
 	flag.Parse()
 	ctrl.SetLogger(zap.New())
 	scheme := runtime.NewScheme()
@@ -35,7 +36,12 @@ func main() {
 		os.Exit(1)
 	}
 	server := webhook.NewServer(webhook.Options{Port: 9443, CertDir: certDir})
-	server.Register(boundary.Path, &webadmission.Webhook{Handler: &boundary.Ownership{Reader: reader, NamespaceName: controller.NamespaceName}})
+	ownership, err := boundary.NewOwnership(reader, controller.NamespaceName, operatorIdentity)
+	if err != nil {
+		ctrl.Log.Error(err, "invalid admission configuration")
+		os.Exit(1)
+	}
+	server.Register(boundary.Path, &webadmission.Webhook{Handler: ownership})
 	if err := server.Start(ctrl.SetupSignalHandler()); err != nil {
 		ctrl.Log.Error(err, "serve admission")
 		os.Exit(1)

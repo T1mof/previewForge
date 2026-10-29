@@ -1,0 +1,30 @@
+# One operator installation per cluster: cluster-scoped resources use fixed names.
+image:
+  repository: previewforge
+  tag: dev
+  digest: ""
+  pullPolicy: IfNotPresent
+replicaCount: 1
+resources:
+  requests: {cpu: 100m, memory: 128Mi}
+  limits: {cpu: 500m, memory: 256Mi}
+network:
+  dnsNamespace: kube-system
+  dnsPodSelector: k8s-app=kube-dns
+  ingressNamespace: ""
+  ingressPodSelector: ""
+metrics:
+  enabled: true
+  # Empty uses controller-runtime's ephemeral self-signed certificate.
+  tlsSecretName: ""
+admission:
+  # Matches config/default. Enable explicitly with trusted TLS inputs.
+  enabled: false
+  replicaCount: 1
+  tls:
+    secretName: previewforge-admission-tls
+    # Base64 PEM CA, supplied by the administrator; private keys are never values.
+    caBundle: ""
+  resources:
+    requests: {cpu: 20m, memory: 64Mi}
+    limits: {cpu: 500m, memory: 256Mi}

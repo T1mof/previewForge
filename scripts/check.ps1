@@ -17,6 +17,7 @@ if ($Generate) {
     Invoke-Checked { & "$env:GOBIN\controller-gen.exe" rbac:roleName=previewforge-pr-deployer-role 'paths=./internal/prenvironment' output:rbac:artifacts:config=config/pr-deployer }
     Invoke-Checked { & "$env:GOBIN\controller-gen.exe" rbac:roleName=previewforge-metrics-reader 'paths=./internal/monitoring' output:rbac:artifacts:config=config/metrics-reader }
     Invoke-Checked { & "$env:GOBIN\controller-gen.exe" rbac:roleName=previewforge-admission-reader 'paths=./internal/admission' output:rbac:artifacts:config=config/admission }
+    Invoke-Checked { python scripts/sync-chart-assets.py }
 }
 Invoke-Checked { gofmt -w api cmd internal examples test }
 Invoke-Checked { go vet ./... }

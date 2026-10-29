@@ -1,0 +1,10 @@
+apiVersion: v2
+name: previewforge
+description: Kubernetes operator for disposable preview environments
+type: application
+version: 0.1.0
+appVersion: "0.1.0"
+kubeVersion: ">=1.37.0 <1.38.0-0"
+home: https://github.com/T1mof/previewForge
+sources:
+  - https://github.com/T1mof/previewForge

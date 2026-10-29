@@ -1,0 +1,82 @@
+apiVersion: admissionregistration.k8s.io/v1
+kind: ValidatingAdmissionPolicy
+metadata:
+  name: previewforge-deployments.platform.previewforge.dev
+spec:
+  failurePolicy: Fail
+  matchConstraints:
+    resourceRules:
+      - apiGroups: [apps]
+        apiVersions: [v1]
+        operations: [CREATE, UPDATE]
+        resources: [deployments]
+        scope: Namespaced
+  matchConditions:
+    - name: operator-identity
+      expression: "request.userInfo.username == 'system:serviceaccount:previewforge-system:previewforge-controller-manager'"
+  variables:
+    - name: pod
+      expression: object.spec.template.spec
+    - name: annotations
+      expression: "has(object.spec.template.metadata.annotations) ? object.spec.template.metadata.annotations : {}"
+    - name: oldAnnotations
+      expression: "oldObject != null && has(oldObject.spec.template.metadata.annotations) ? oldObject.spec.template.metadata.annotations : {}"
+  validations:
+    - expression: "has(object.spec.replicas) && object.spec.replicas >= 1 && object.spec.replicas <= 10 && size(variables.pod.containers) == 1 && variables.pod.containers[0].name == 'app'"
+      message: "PreviewForge workload safety: one app container and 1-10 replicas are required"
+      reason: Forbidden
+    - expression: >-
+        has(variables.pod.serviceAccountName) && variables.pod.serviceAccountName == 'default' &&
+        has(variables.pod.automountServiceAccountToken) && !variables.pod.automountServiceAccountToken &&
+        (!has(variables.pod.hostNetwork) || !variables.pod.hostNetwork) &&
+        (!has(variables.pod.hostPID) || !variables.pod.hostPID) && (!has(variables.pod.hostIPC) || !variables.pod.hostIPC) &&
+        (!has(variables.pod.nodeName) || variables.pod.nodeName == '') &&
+        (!has(variables.pod.runtimeClassName) || variables.pod.runtimeClassName == '') &&
+        (!has(variables.pod.priorityClassName) || variables.pod.priorityClassName == '') &&
+        (!has(variables.pod.imagePullSecrets) || size(variables.pod.imagePullSecrets) == 0) &&
+        (!has(variables.pod.resourceClaims) || size(variables.pod.resourceClaims) == 0)
+      message: "PreviewForge workload safety: default SA without token, normal Pod network and no host/runtime/device escalation are required"
+      reason: Forbidden
+    - expression: >-
+        (!has(variables.pod.initContainers) || size(variables.pod.initContainers) == 0) &&
+        (!has(variables.pod.ephemeralContainers) || size(variables.pod.ephemeralContainers) == 0) &&
+        has(variables.pod.securityContext) && has(variables.pod.securityContext.seccompProfile) &&
+        variables.pod.securityContext.seccompProfile.type == 'RuntimeDefault' &&
+        (!has(variables.pod.securityContext.sysctls) || size(variables.pod.securityContext.sysctls) == 0) &&
+        (!has(variables.pod.volumes) || variables.pod.volumes.all(v,
+          v.name == 'tmp' && has(v.emptyDir) && has(v.emptyDir.sizeLimit) &&
+          quantity(v.emptyDir.sizeLimit).compareTo(quantity('64Mi')) <= 0 && quantity(v.emptyDir.sizeLimit).compareTo(quantity('0')) > 0 &&
+          (!has(v.emptyDir.medium) || v.emptyDir.medium == '')))
+      message: "PreviewForge workload safety: only bounded tmp emptyDir, RuntimeDefault seccomp and no injected containers/sysctls are allowed"
+      reason: Forbidden
+    - expression: >-
+        variables.pod.containers.all(c,
+          has(c.securityContext) && has(c.securityContext.allowPrivilegeEscalation) && !c.securityContext.allowPrivilegeEscalation &&
+          (!has(c.securityContext.privileged) || !c.securityContext.privileged) &&
+          (!has(c.securityContext.capabilities) || !has(c.securityContext.capabilities.add) || size(c.securityContext.capabilities.add) == 0) &&
+          has(c.securityContext.capabilities) && has(c.securityContext.capabilities.drop) &&
+          ('NET_RAW' in c.securityContext.capabilities.drop || 'ALL' in c.securityContext.capabilities.drop) &&
+          (!has(c.env) || size(c.env) == 0) && (!has(c.envFrom) || size(c.envFrom) == 0) &&
+          (!has(c.command) || size(c.command) == 0) && (!has(c.args) || size(c.args) == 0) &&
+          (!has(c.lifecycle)) && (!has(c.livenessProbe)) && (!has(c.startupProbe)) &&
+          (!has(c.volumeDevices) || size(c.volumeDevices) == 0) &&
+          (!has(c.ports) || c.ports.all(p, !has(p.hostPort) || p.hostPort == 0)) &&
+          (!has(c.volumeMounts) || c.volumeMounts.all(m, m.name == 'tmp' && m.mountPath == '/tmp' && !has(m.subPath) && !has(m.subPathExpr))) &&
+          has(c.readinessProbe) && has(c.readinessProbe.tcpSocket) && c.readinessProbe.tcpSocket.port == 'http' &&
+          (!has(c.readinessProbe.tcpSocket.host) || c.readinessProbe.tcpSocket.host == '') &&
+          !has(c.readinessProbe.exec) && !has(c.readinessProbe.httpGet) && !has(c.readinessProbe.grpc))
+      message: "PreviewForge workload safety: privileged/capability/credential injection and kubelet-side request hooks are forbidden"
+      reason: Forbidden
+    - expression: >-
+        variables.pod.containers.all(c,
+          has(c.resources) && has(c.resources.requests) && has(c.resources.limits) &&
+          ['cpu', 'memory'].all(k, k in c.resources.requests && k in c.resources.limits) &&
+          c.resources.requests.all(k, k in ['cpu', 'memory']) && c.resources.limits.all(k, k in ['cpu', 'memory']) &&
+          quantity(c.resources.requests['cpu']).compareTo(quantity('1m')) >= 0 && quantity(c.resources.requests['cpu']).compareTo(quantity('500m')) <= 0 &&
+          quantity(c.resources.requests['memory']).compareTo(quantity('16Mi')) >= 0 && quantity(c.resources.requests['memory']).compareTo(quantity('512Mi')) <= 0 &&
+          quantity(c.resources.limits['cpu']).compareTo(quantity('1')) <= 0 && quantity(c.resources.limits['memory']).compareTo(quantity('1Gi')) <= 0)
+      message: "PreviewForge workload safety: application CPU/memory must stay within API budgets"
+      reason: Forbidden
+    - expression: "request.operation == 'CREATE' ? size(variables.annotations) == 0 : variables.annotations == variables.oldAnnotations"
+      message: "PreviewForge workload safety: operator must not create or change Pod template annotations"
+      reason: Forbidden

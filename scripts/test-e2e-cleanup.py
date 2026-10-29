@@ -123,7 +123,7 @@ def main():
                 (directory / ".docker-endpoint").write_text("unix:///var/run/docker.sock")
                 (directory / ".docker-host").write_text("")
             env = os.environ.copy()
-            env.update(PATH=str(tools) + os.pathsep + env["PATH"], KUBECONFIG=str(sentinel), DOCKER_HOST="",
+            env.update(PATH=str(tools) + os.pathsep + env["PATH"], KUBECONFIG=str(sentinel), DOCKER_HOST="", PREVIEWFORGE_INSTALLER="kustomize",
                        PREVIEWFORGE_DEMO_HTTP_PORT="",
                        PREVIEWFORGE_PREVIEWCTL="previewctl",
                        PREVIEWFORGE_TEST_CLUSTER="production" if scenario == "invalid-name" else CLUSTER,
@@ -206,6 +206,12 @@ def main():
                 checks.write_text("".join(f"PASS: {name}: synthetic fixture\n" for name in names))
                 assert subprocess.run(gate, cwd=fixture, env=env, capture_output=True).returncode == 0
                 print("report gate: complete evidence accepted PASS (synthetic report)")
+                helm_env = dict(env, PREVIEWFORGE_INSTALLER="helm")
+                checks.write_text("".join(f"PASS: {name}: synthetic fixture\n" for name in names) + "PASS: helm: synthetic fixture\n")
+                rejected = subprocess.run(gate, cwd=fixture, env=helm_env, capture_output=True, text=True)
+                assert rejected.returncode != 0 and "Missing Helm runtime evidence" in rejected.stderr
+                print("report gate: missing Helm evidence rejected PASS (synthetic report)")
+                checks.write_text("".join(f"PASS: {name}: synthetic fixture\n" for name in names))
                 (directory / "artifacts" / "cleanup.txt").unlink()
                 assert subprocess.run(gate, cwd=fixture, env=env, capture_output=True).returncode != 0
                 print("report gate: missing cleanup rejected PASS (synthetic report)")

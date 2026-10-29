@@ -1,0 +1,70 @@
+apiVersion: admissionregistration.k8s.io/v1
+kind: ValidatingAdmissionPolicy
+metadata:
+  name: previewforge-children.platform.previewforge.dev
+spec:
+  failurePolicy: Fail
+  matchConstraints:
+    resourceRules:
+      - apiGroups: [""]
+        apiVersions: [v1]
+        operations: [CREATE, UPDATE, DELETE]
+        resources: [services, resourcequotas, limitranges]
+        scope: Namespaced
+      - apiGroups: [apps]
+        apiVersions: [v1]
+        operations: [CREATE, UPDATE, DELETE]
+        resources: [deployments]
+        scope: Namespaced
+      - apiGroups: [networking.k8s.io]
+        apiVersions: [v1]
+        operations: [CREATE, UPDATE, DELETE]
+        resources: [ingresses, networkpolicies]
+        scope: Namespaced
+  matchConditions:
+    - name: operator-identity
+      expression: "request.userInfo.username == 'system:serviceaccount:previewforge-system:previewforge-controller-manager'"
+  variables:
+    - name: target
+      expression: "request.operation == 'DELETE' ? oldObject : object"
+    - name: owners
+      expression: >-
+        has(variables.target.metadata.ownerReferences) ? variables.target.metadata.ownerReferences.filter(r,
+          has(r.controller) && r.controller && r.apiVersion == 'platform.previewforge.dev/v1alpha1' &&
+          r.kind == 'PreviewEnvironment' && r.name != '' && r.uid != '') : []
+    - name: oldOwners
+      expression: >-
+        oldObject != null && has(oldObject.metadata.ownerReferences) ? oldObject.metadata.ownerReferences.filter(r,
+          has(r.controller) && r.controller && r.apiVersion == 'platform.previewforge.dev/v1alpha1' &&
+          r.kind == 'PreviewEnvironment' && r.name != '' && r.uid != '') : []
+    - name: annotations
+      expression: "object != null && has(object.metadata.annotations) ? object.metadata.annotations : {}"
+    - name: oldAnnotations
+      expression: "oldObject != null && has(oldObject.metadata.annotations) ? oldObject.metadata.annotations : {}"
+  validations:
+    - expression: "namespaceObject != null && namespaceObject.metadata.name.startsWith('forge-') && size(variables.owners) == 1"
+      message: "PreviewForge child boundary: forge-* Namespace and a controller reference are required; live ownership is checked by the webhook"
+      reason: Forbidden
+    - expression: >-
+        request.operation == 'CREATE' ||
+        (size(variables.oldOwners) == 1 && size(variables.owners) == 1 &&
+         variables.oldOwners[0].uid == variables.owners[0].uid && variables.oldOwners[0].name == variables.owners[0].name)
+      message: "PreviewForge child boundary: existing foreign resources cannot be adopted or re-owned"
+      reason: Forbidden
+    - expression: >-
+        (request.resource.resource in ['services', 'deployments', 'ingresses'] && variables.target.metadata.name == 'app') ||
+        (request.resource.resource == 'resourcequotas' && variables.target.metadata.name == 'previewforge-budget') ||
+        (request.resource.resource == 'limitranges' && variables.target.metadata.name == 'previewforge-defaults') ||
+        (request.resource.resource == 'networkpolicies' && variables.target.metadata.name in ['previewforge-isolation', 'previewforge-ingress'])
+      message: "PreviewForge child boundary: operator may write only its reserved resource names"
+      reason: Forbidden
+    - expression: >-
+        request.operation == 'DELETE' ||
+        (size(variables.owners) == 1 && has(object.metadata.labels) &&
+         'app.kubernetes.io/managed-by' in object.metadata.labels && object.metadata.labels['app.kubernetes.io/managed-by'] == 'previewforge' &&
+         'platform.previewforge.dev/owner-uid' in object.metadata.labels && object.metadata.labels['platform.previewforge.dev/owner-uid'] == variables.owners[0].uid)
+      message: "PreviewForge child boundary: labels must agree with the controller UID"
+      reason: Forbidden
+    - expression: "request.operation == 'DELETE' || (request.operation == 'CREATE' ? size(variables.annotations) == 0 : variables.annotations == variables.oldAnnotations)"
+      message: "PreviewForge child boundary: operator must not create or change resource annotations"
+      reason: Forbidden

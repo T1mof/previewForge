@@ -1,0 +1,12 @@
+PreviewForge is installed in {{ .Release.Namespace }}.
+
+Only one operator installation per cluster is supported.
+CRDs are retained by Helm on uninstall and are upgraded separately.
+Delete and wait for your PreviewEnvironment resources to finish cleanup before
+uninstalling the operator. The chart does not delete user environments for you.
+
+{{ if .Values.admission.enabled }}Admission boundaries are enabled for {{ include "previewforge.operatorIdentity" . }}.
+The administrator manages TLS Secret {{ .Values.admission.tls.secretName }} and CA rotation.
+{{ else }}Admission boundaries are disabled. To enable them, provide a TLS Secret and
+admission.tls.caBundle. Use a separate demo cluster with trusted CR authors.
+{{ end }}

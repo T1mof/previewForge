@@ -53,7 +53,7 @@
 
 - [x] Предметные inventory metrics из Kubernetes, HTTPS authn/authz endpoint, optional Prometheus/Grafana и dashboard. CI run 40745877197 (743ec4e): 16/16, cleanup и artifact проверены независимо; [отчёт](verification/2026-10-28-metrics.md). Полный monitoring также прошёл локально 2026-10-29 внутри suite 17/17 после исправления Git Bash paths/CRLF; [новый отчёт](verification/2026-10-29-resource-controls.md).
 - [x] ResourceQuota/LimitRange, настраиваемые CPU/memory и Pod Security baseline/restricted. Итоговый CI 40890879045, commit b5343c9: 17/17, настоящий admission и cleanup; artifact скачан и проверен независимо. Тот же source прошёл локальный kind 17/17 с cleanup. [Контракт](RESOURCE-CONTROLS.md), [отчёт](verification/2026-10-29-resource-controls.md). Ограничения записи оператора теперь включаются через optional config/hardened; broad reads и CR writes сохраняются.
-- [ ] Helm Chart.
+- [ ] Helm Chart: подготовлены package, schema values, синхронизация canonical CRD/RBAC/CEL, custom namespace и TLS identity. Unit/render/package, vet/race/envtest и fake cleanup/gate PASS; настоящий install/upgrade/rollback/uninstall и полный Calico suite 20/20 пока проверяются. [Контракт](HELM.md).
 - [ ] Нагрузочные и отказоустойчивые испытания с опубликованными измерениями.
 - [ ] Больше интеграционных сценариев и поддерживаемая Kubernetes version matrix.
 

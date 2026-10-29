@@ -3,6 +3,7 @@ set -euo pipefail
 cd "$(dirname "$0")/.."
 source scripts/kind-lifecycle.sh
 export PREVIEWFORGE_KIND_CNI=${PREVIEWFORGE_KIND_CNI:-calico}
+export PREVIEWFORGE_INSTALLER=${PREVIEWFORGE_INSTALLER:-helm}
 # A fresh cluster for every run; demo refuses existing clusters.
 export PREVIEWFORGE_TEST_CLUSTER=${PREVIEWFORGE_TEST_CLUSTER:-previewforge-test-$(od -An -N4 -tx1 /dev/urandom | tr -d ' \n')}
 export PREVIEWFORGE_RUN_TOKEN=${PREVIEWFORGE_RUN_TOKEN:-$(od -An -N16 -tx1 /dev/urandom | tr -d ' \n')}

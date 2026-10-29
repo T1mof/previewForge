@@ -1,0 +1,66 @@
+{{- $root := . -}}
+{{- range $path := list "rbac/role.yaml" "metrics-reader/role.yaml" "admission/role.yaml" -}}
+{{- $enabled := or (eq $path "rbac/role.yaml") (and (eq $path "metrics-reader/role.yaml") $root.Values.metrics.enabled) (and (eq $path "admission/role.yaml") $root.Values.admission.enabled) -}}
+{{- if $enabled -}}
+{{- $role := $root.Files.Get (printf "files/generated/%s" $path) | fromYaml }}
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: {{ $role.metadata.name }}
+  labels:
+    {{- include "previewforge.labels" $root | nindent 4 }}
+rules:
+  {{- $role.rules | toYaml | nindent 2 }}
+{{ end }}
+{{- end }}
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: previewforge-controller-manager
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "previewforge.labels" . | nindent 4 }}
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: previewforge-manager-rolebinding
+  labels:
+    {{- include "previewforge.labels" . | nindent 4 }}
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: previewforge-manager-role
+subjects:
+  - kind: ServiceAccount
+    name: previewforge-controller-manager
+    namespace: {{ .Release.Namespace }}
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: previewforge-leader-election
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "previewforge.labels" . | nindent 4 }}
+{{- $leader := .Files.Get "files/generated/rbac/leader_election.yaml" | splitList "\n---\n" | first | fromYaml }}
+rules:
+  {{- $leader.rules | toYaml | nindent 2 }}
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: previewforge-leader-election
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "previewforge.labels" . | nindent 4 }}
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: previewforge-leader-election
+subjects:
+  - kind: ServiceAccount
+    name: previewforge-controller-manager
+    namespace: {{ .Release.Namespace }}

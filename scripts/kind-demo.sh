@@ -2,6 +2,11 @@
 set -euo pipefail
 cd "$(dirname "$0")/.."
 source scripts/kind-lifecycle.sh
+installer=${PREVIEWFORGE_INSTALLER:-kustomize}
+[[ "$installer" == helm || "$installer" == kustomize ]] || { echo 'PREVIEWFORGE_INSTALLER must be helm or kustomize' >&2; exit 1; }
+if [[ "$installer" == helm ]]; then
+  command -v "${PREVIEWFORGE_HELM:-helm}" >/dev/null || { echo 'Helm 4.3.1 is required; see scripts/install-helm.sh' >&2; exit 1; }
+fi
 for tool in docker kind kubectl; do
   command -v "$tool" >/dev/null || { echo "Missing prerequisite: $tool" >&2; exit 1; }
 done
@@ -77,7 +82,11 @@ EOF
 cp config/network-demo/operator-patch.yaml "$overlay/operator-network.yaml"
 docker build -t "$image" .
 kind load docker-image "$image" --name "$cluster"
-k apply -k "$overlay"
+if [[ "$installer" == helm ]]; then
+  source scripts/install-helm-operator.sh
+else
+  k apply -k "$overlay"
+fi
 k wait --for=condition=Established crd/previewenvironments.platform.previewforge.dev --timeout=60s
 k -n previewforge-system rollout status deployment/previewforge-admission --timeout=120s
 k -n previewforge-system rollout status deployment/previewforge-controller-manager --timeout=120s
