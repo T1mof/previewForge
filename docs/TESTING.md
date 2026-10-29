@@ -1,10 +1,14 @@
 # Проверки
 
-Актуализировано: 2026-10-29. Среда: Windows/amd64, Go 1.26.1; Ubuntu WSL2/Linux amd64, Go 1.26.9 и gcc 13.3. История ниже разделяет локальные проверки и GitHub-hosted kind; этап 1 завершён.
+Актуализировано: 2026-10-30. Среда: Windows/amd64, Go 1.26.1; Ubuntu WSL2/Linux amd64, Go 1.26.9 и gcc 13.3. История ниже разделяет локальные проверки и GitHub-hosted kind; этап 1 завершён.
 
-## Admission — выполняется проверка (2026-10-29)
+## Admission — подтверждённая проверка (2026-10-30)
 
-Подготовлены optional `config/hardened`, четыре CEL policy и отдельный TLS ownership webhook с manifest read-only ServiceAccount. Windows vet/test/build, сертификатная проверка, native fake CLI 7/7, Linux fake CLI 11/11, cleanup 21 и report gate 4 — PASS. Предварительная admission envtest suite прошла на настоящем API; после расширения проверок запущены полный Linux race/envtest и Calico kind suite. Новый 19-й check включает реальные отказы API при разрешающем RBAC, сохранение чужих UID/resourceVersion и отказ при остановке webhook. **Полный 19/19 и CI пока не подтверждены**. [Контракт, TLS и остаточные ограничения](ADMISSION.md).
+Итоговый [CI 40938752311](https://github.com/T1mof/previewForge/actions/runs/40938752311), source `b5a0af055519d0f35a83aa6358bf5702101808a6`: оба job **SUCCESS**, настоящий Calico kind **19/19**, report gate/cleanup **PASS**. Artifact `12927776379`, SHA256 `c994cb5fc82b389671f29b3483b97bfdb49e6b90b25f9d24e1e0f00582973869` скачан, digest совпал с API. Независимо проверены все прежние 18 результатов, 4 policy без type warnings, 10 конкретных отказов при разрешающем RBAC, 8 access reviews, сохранение чужих UID/resourceVersion, fail-closed, recovery и отсутствие приватных TLS-ключей. [Отчёт](verification/2026-10-30-admission.md), [контракт и TLS](ADMISSION.md).
+
+Windows vet/test/build и сертификатный unit test — **PASS**; reader role сгенерирован controller-gen 0.22.0. Native fake CLI 7/7, Linux fake CLI 11/11, cleanup 21, synthetic report gate 4, metadata 8, shellcheck/actionlint — **PASS**. Полный Linux vet/build/race/envtest **PASS**, exit 0 записан внутри Bash: race controller 4,155 с, admission envtest 15,33 с, прежняя envtest 11,01 с / пакет 27,575 с. В итоговом CI race controller 3,802 с, обе API-suite 8,60/9,81 с / пакет 19,470 с. Оператор и отдельный read-only webhook используют manifest ServiceAccount RBAC; envtest не выдаётся за Pods/GC/dataplane.
+
+Локальный `previewforge-test-admission-20261029-c` на том же source подтвердил admission-блок полностью, включая два recovery-запроса (transport error, затем успех). **Полный локальный 19/19 не заявляется**: monitoring остановился на timeout image pull. Первый cleanup получил Docker error без exit event; после проверки сохранённых claim/token, endpoint и точного ID уже остановленного контейнера повторный обычный cleanup удалил кластер и подтвердил отсутствие. Исходный результат E2E 1 / cleanup 1 сохранён; `cleanup-retry.txt` отдельно фиксирует успешный повтор. Других локальных kind-кластеров не осталось; пользовательский kubeconfig не менялся. История CI/bootstrap/OpenAPI/recovery исправлений приведена в отчёте.
 
 ## NetworkPolicy — подтверждённая проверка (2026-10-29)
 

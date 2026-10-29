@@ -1,6 +1,6 @@
 # Roadmap
 
-Обновлено: 2026-10-29. Исходное [ТЗ](SPECIFICATION.md) сохранено без изменений. Этап 1 завершён: локальный kind и GitHub run 40576650171 подтверждены. Проверенный commit, все 13 результатов и cleanup зафиксированы в [отчёте CI](verification/2026-10-27-stage1.md). Ingress/demo также подтверждены; подготовлена выключенная PR-интеграция для будущего отдельного кластера.
+Обновлено: 2026-10-30. Исходное [ТЗ](SPECIFICATION.md) сохранено без изменений. Этап 1 завершён: локальный kind и GitHub run 40576650171 подтверждены. Проверенный commit, все 13 результатов и cleanup зафиксированы в [отчёте CI](verification/2026-10-27-stage1.md). Ingress/demo также подтверждены; подготовлена выключенная PR-интеграция для будущего отдельного кластера.
 
 ## Этап 1 — Рабочий Kubernetes Operator
 
@@ -45,16 +45,16 @@
 - [x] CI PR-подготовки подтверждён: run 40640242526, commit ad72829, оба job SUCCESS, 15/15 и cleanup; artifact скачан и проверен независимо. [Отчёт](verification/2026-10-28-pr-integration.md).
 - [ ] После выбора площадки: активировать workflow и подтвердить настоящий GitHub PR create/update/HTTP/close. Fixture metadata в локальном kind этот пункт не закрывает.
 - [x] NetworkPolicy для namespace isolation, DNS и gateway: CI 40915413741 / cfb3946, 18/18 на Calico 3.33.0, cleanup и artifact 12916698603 проверены независимо. Подтверждены 21 positive/17 denied probes, policy UID/watch/restart и отзыв gateway. [Контракт](NETWORK-ISOLATION.md), [отчёт](verification/2026-10-29-network-isolation.md). Локальный полный 18/18 не заявляется.
-- [ ] Дополнительные ограничения cluster-wide доступа оператора к API/admission: подготовлены `config/hardened`, CEL и отдельный read-only ownership webhook; выполняются envtest и настоящий kind suite 19/19. [Контракт и TLS](ADMISSION.md). NetworkPolicy не заменяет admission; этап не закрыт до проверки полного результата.
+- [x] Дополнительные ограничения записи оператора через `config/hardened`: CEL и отдельный read-only ownership webhook. CI 40938752311 / b5a0af0, 19/19, cleanup и artifact 12927776379 проверены независимо; 10 policy denials, 8 RBAC reviews, fail-closed и recovery. Локально admission-блок PASS, полный 19/19 не заявляется. [Контракт и TLS](ADMISSION.md), [отчёт](verification/2026-10-30-admission.md). Broad RBAC reads и CR writes остаются ограничениями модели.
 
 Базовые drift repair, ownership и optimistic locking включены в этап 1, поскольку нужны для корректного reconcile.
 
 ## Этап 3 — Наблюдаемость и эксплуатация
 
 - [x] Предметные inventory metrics из Kubernetes, HTTPS authn/authz endpoint, optional Prometheus/Grafana и dashboard. CI run 40745877197 (743ec4e): 16/16, cleanup и artifact проверены независимо; [отчёт](verification/2026-10-28-metrics.md). Полный monitoring также прошёл локально 2026-10-29 внутри suite 17/17 после исправления Git Bash paths/CRLF; [новый отчёт](verification/2026-10-29-resource-controls.md).
-- [x] ResourceQuota/LimitRange, настраиваемые CPU/memory и Pod Security baseline/restricted. Итоговый CI 40890879045, commit b5343c9: 17/17, настоящий admission и cleanup; artifact скачан и проверен независимо. Тот же source прошёл локальный kind 17/17 с cleanup. [Контракт](RESOURCE-CONTROLS.md), [отчёт](verification/2026-10-29-resource-controls.md). Дополнительные ограничения cluster-wide прав оператора остаются отдельной задачей.
+- [x] ResourceQuota/LimitRange, настраиваемые CPU/memory и Pod Security baseline/restricted. Итоговый CI 40890879045, commit b5343c9: 17/17, настоящий admission и cleanup; artifact скачан и проверен независимо. Тот же source прошёл локальный kind 17/17 с cleanup. [Контракт](RESOURCE-CONTROLS.md), [отчёт](verification/2026-10-29-resource-controls.md). Ограничения записи оператора теперь включаются через optional config/hardened; broad reads и CR writes сохраняются.
 - [ ] Helm Chart.
 - [ ] Нагрузочные и отказоустойчивые испытания с опубликованными измерениями.
 - [ ] Больше интеграционных сценариев и поддерживаемая Kubernetes version matrix.
 
-Inventory collector и защищённый HTTPS endpoint подтверждены GitHub-hosted kind; optional Prometheus/Grafana demo описан в [OBSERVABILITY.md](OBSERVABILITY.md). При запуске процесса вне manifests metrics по умолчанию выключены. ResourceQuota/LimitRange/PSA и NetworkPolicy подтверждены настоящими admission/dataplane e2e. Следующая работа — дополнительные ограничения cluster-wide доступа оператора, упаковка и эксплуатационные испытания; внешняя PR-активация остаётся отложенным шагом.
+Inventory collector и защищённый HTTPS endpoint подтверждены GitHub-hosted kind; optional Prometheus/Grafana demo описан в [OBSERVABILITY.md](OBSERVABILITY.md). При запуске процесса вне manifests metrics по умолчанию выключены. ResourceQuota/LimitRange/PSA, NetworkPolicy и optional API write boundaries подтверждены настоящими admission/dataplane e2e. Следующая работа — Helm, нагрузочные/отказные испытания и version matrix; внешняя PR-активация остаётся отложенным шагом.

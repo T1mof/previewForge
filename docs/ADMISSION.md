@@ -107,7 +107,11 @@ and waits for actual temporary Namespace deletion. Dangerous Pod
 candidates use server dry-run so they are never scheduled. The artifact
 contains policy/binding snapshots, individual denial messages and
 `admission-checks.json`. The report gate requires all 19 check IDs plus
-verified cluster cleanup. Until a completed run is recorded, this new
-milestone is not considered verified.
+verified cluster cleanup. [CI run 40938752311](https://github.com/T1mof/previewForge/actions/runs/40938752311)
+passed all 19 checks and cleanup; the downloaded artifact was independently
+verified. The local admission block passed, while the full local suite stopped
+later on a monitoring image-pull timeout. See the
+[verification report](verification/2026-10-30-admission.md) for exact evidence,
+cleanup retry and limitations.
 
 Reference: [Kubernetes ValidatingAdmissionPolicy](https://kubernetes.io/docs/reference/access-authn-authz/validating-admission-policy/).
