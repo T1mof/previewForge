@@ -317,8 +317,15 @@ func (b *runner) gone(ctx context.Context, items []*fixture, name string) error 
 	times := map[*fixture]float64{}
 	err := wait(ctx, 180*time.Second, func(ctx context.Context) (bool, error) {
 		for _, f := range items {
-			if f.UID == "" || f.Removed {
+			if f.UID == "" {
 				times[f] = 0
+				continue
+			}
+			if f.Removed {
+				// Preserve the first NotFound observation across subsequent polls.
+				if _, observed := times[f]; !observed {
+					times[f] = time.Since(f.start).Seconds()
+				}
 				continue
 			}
 			p, err := b.fresh(ctx, f)

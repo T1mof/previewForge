@@ -11,6 +11,8 @@ import (
 	"testing"
 	"time"
 
+	platform "github.com/T1mof/previewForge/api/v1alpha1"
+
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -19,6 +21,45 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 	"sigs.k8s.io/controller-runtime/pkg/client/interceptor"
 )
+
+// Fake API responses exercise observation bookkeeping, not actual Kubernetes GC.
+func TestCleanupPreservesFirstObservation(t *testing.T) {
+	scheme := runtime.NewScheme()
+	if err := corev1.AddToScheme(scheme); err != nil {
+		t.Fatal(err)
+	}
+	if err := platform.AddToScheme(scheme); err != nil {
+		t.Fatal(err)
+	}
+	pendingReads := 0
+	c := fake.NewClientBuilder().WithScheme(scheme).WithInterceptorFuncs(interceptor.Funcs{
+		Get: func(ctx context.Context, c client.WithWatch, key client.ObjectKey, obj client.Object, opts ...client.GetOption) error {
+			if p, ok := obj.(*platform.PreviewEnvironment); ok && key.Name == "pending" {
+				pendingReads++
+				if pendingReads == 1 {
+					p.ObjectMeta = metav1.ObjectMeta{Name: key.Name, UID: "pending-uid"}
+					return nil
+				}
+			}
+			return c.Get(ctx, key, obj, opts...)
+		},
+	}).Build()
+	start := time.Now().Add(-time.Second)
+	items := []*fixture{{Name: "complete", UID: "complete-uid", Namespace: "own-complete", start: start}, {Name: "pending", UID: "pending-uid", Namespace: "own-pending", start: start}}
+	b := &runner{c: c}
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+	if err := b.gone(ctx, items, "unit-observation"); err != nil {
+		t.Fatal(err)
+	}
+	if pendingReads != 2 || len(b.r.Measurements) != 1 {
+		t.Fatalf("expected two distinct observations: %d", pendingReads)
+	}
+	values := b.r.Measurements[0].Seconds
+	if len(values) != 2 || values[0] < 1 || values[1] <= values[0] {
+		t.Fatalf("first completed observation was overwritten: %v", values)
+	}
+}
 
 func TestCLIHasIndependentFlags(t *testing.T) {
 	for i := 0; i < 2; i++ {

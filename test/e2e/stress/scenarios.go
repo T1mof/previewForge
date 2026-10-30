@@ -81,6 +81,13 @@ func (b *runner) scenarios(ctx context.Context) error {
 		}
 	}
 	b.r.Evidence["all_fixtures_removed"] = true
+	for _, m := range b.r.Measurements {
+		for _, seconds := range m.Seconds {
+			if seconds <= 0 || math.IsNaN(seconds) || math.IsInf(seconds, 0) {
+				return fmt.Errorf("invalid latency observation in %s", m.Name)
+			}
+		}
+	}
 	// Require real metrics before and after the experiment; an empty query is not zero.
 	if _, err := b.counter(ctx, "process_resident_memory_bytes"); err != nil {
 		return err
