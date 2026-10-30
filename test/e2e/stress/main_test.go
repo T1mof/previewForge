@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"errors"
+	"flag"
 	"os"
 	"path/filepath"
 	"reflect"
@@ -18,6 +19,21 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 	"sigs.k8s.io/controller-runtime/pkg/client/interceptor"
 )
+
+func TestCLIHasIndependentFlags(t *testing.T) {
+	for i := 0; i < 2; i++ {
+		o, err := parseOptions([]string{"--kubeconfig", "explicit-only", "--context", "kind-fixture", "--workers", "3"})
+		if err != nil || o.Kubeconfig != "explicit-only" || o.Context != "kind-fixture" || o.Workers != 3 || o.Count != 16 {
+			t.Fatalf("explicit CLI flags: %+v %v", o, err)
+		}
+	}
+	if _, err := parseOptions([]string{"--help"}); !errors.Is(err, flag.ErrHelp) {
+		t.Fatal("help must not initialize Kubernetes")
+	}
+	if _, err := parseOptions([]string{"unexpected"}); err == nil {
+		t.Fatal("positional kubeconfig must not be accepted")
+	}
+}
 
 func TestNearestRank(t *testing.T) {
 	values := []float64{7, 1, 9, 2, 3, 6, 5, 4, 8, 10, 16, 15, 14, 13, 12, 11}

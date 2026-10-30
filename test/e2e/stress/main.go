@@ -114,21 +114,38 @@ type runner struct {
 }
 
 func main() {
-	o := options{}
-	flag.StringVar(&o.Kubeconfig, "kubeconfig", "", "run-specific kubeconfig")
-	flag.StringVar(&o.Context, "context", "", "explicit kind context")
-	flag.StringVar(&o.Cluster, "cluster", "", "claimed previewforge-test-* cluster")
-	flag.StringVar(&o.RunDir, "run-dir", "", "existing bin/runs/<cluster>")
-	flag.StringVar(&o.SourceUID, "source-namespace-uid", "", "explicit operator Namespace UID")
-	flag.StringVar(&o.Namespace, "operator-namespace", "previewforge-system", "operator Namespace")
-	flag.StringVar(&o.Image, "image", "", "already loaded netprobe image")
-	flag.IntVar(&o.Count, "environments", 16, "8..32 warm-image environments")
-	flag.IntVar(&o.Workers, "workers", 4, "1..8 concurrent fixture writers")
-	flag.Parse()
-	if err := execute(o); err != nil {
+	o, err := parseOptions(os.Args[1:])
+	if errors.Is(err, flag.ErrHelp) {
+		return
+	}
+	if err == nil {
+		err = execute(o)
+	}
+	if err != nil {
 		fmt.Fprintln(os.Stderr, err)
 		os.Exit(1)
 	}
+}
+
+func parseOptions(args []string) (options, error) {
+	o := options{}
+	// controller-runtime registers kubeconfig globally at import time.
+	// This executable must own its FlagSet and never use that global default.
+	fs := flag.NewFlagSet("stressbench", flag.ContinueOnError)
+	fs.StringVar(&o.Kubeconfig, "kubeconfig", "", "run-specific kubeconfig")
+	fs.StringVar(&o.Context, "context", "", "explicit kind context")
+	fs.StringVar(&o.Cluster, "cluster", "", "claimed previewforge-test-* cluster")
+	fs.StringVar(&o.RunDir, "run-dir", "", "existing bin/runs/<cluster>")
+	fs.StringVar(&o.SourceUID, "source-namespace-uid", "", "explicit operator Namespace UID")
+	fs.StringVar(&o.Namespace, "operator-namespace", "previewforge-system", "operator Namespace")
+	fs.StringVar(&o.Image, "image", "", "already loaded netprobe image")
+	fs.IntVar(&o.Count, "environments", 16, "8..32 warm-image environments")
+	fs.IntVar(&o.Workers, "workers", 4, "1..8 concurrent fixture writers")
+	err := fs.Parse(args)
+	if err == nil && fs.NArg() != 0 {
+		err = errors.New("unexpected positional arguments")
+	}
+	return o, err
 }
 
 func validate(o options, root, token string) error {
