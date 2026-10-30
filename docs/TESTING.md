@@ -2,6 +2,14 @@
 
 Актуализировано: 2026-10-30. Среда: Windows/amd64, Go 1.26.1; Ubuntu WSL2/Linux amd64, Go 1.26.9 и gcc 13.3. История ниже разделяет локальные проверки и GitHub-hosted kind; этап 1 завершён.
 
+## Helm — подтверждённая проверка (2026-10-30)
+
+Итоговый [CI 40975721575](https://github.com/T1mof/previewForge/actions/runs/40975721575), source `eb554832e75147e1964dc109ac521a374d905381`: оба job **SUCCESS**, настоящий Calico kind **20/20**, report gate и cleanup **PASS**. Artifact `12943606990` (1 355 288 байт), SHA256 `6a0211eaaa2b6bcc51a841675f9b2e241a7feabf1d00d6be2064626b6ffd0868` совпал с GitHub API/Get-FileHash. `.tgz` SHA256 `c74a018eed76e371bac69bfbcb845702ced5e39e79e6577836b40bad90302a24` сверён с JSON witness. Независимо проверены весь предыдущий suite 19/19, custom namespace/identity, install/upgrade/rollback, 3 revision, неизменность UID окружения, CRD/Namespace canary retention, отказ конфликтующего release, package assets и отсутствие приватных ключей. [Отчёт](verification/2026-10-30-helm.md), [установка и TLS](HELM.md).
+
+Windows gofmt/vet/test/build и chart lint/render/schema/package/hardening **PASS**. Linux vet/build/race/envtest **PASS**, exit 0: controller race 4,176 с, admission 1,783 с; API suite 16,52/11,62 с / пакет 29,380 с. Свежий Linux chart/package run 14,597 с. В итоговом CI: controller race 5,634 с, admission 2,339 с; API suite 9,16/11,00 с / пакет 21,235 с; chart 0,809 с. Native fake CLI 7/7, Bash fake CLI 11, cleanup 21, synthetic gate 5, metadata 8, shellcheck/actionlint **PASS**. Fake/envtest не заменяют Pods/GC.
+
+Локальный `previewforge-test-helm-20261030-a` остановился **до Helm deployment** на Docker Hub TLS handshake timeout при получении `golang:1.26.9`; E2E 1 / cleanup 0, guarded cleanup подтвердил отсутствие. Отдельная повторная image build встретила тот же timeout; кластер `b` не создавался. Настройки Docker/WSL/proxy и пользовательский kubeconfig не менялись. **Полный локальный 20/20 не заявляется**; оставшихся kind-кластеров нет.
+
 ## Admission — подтверждённая проверка (2026-10-30)
 
 Итоговый [CI 40938752311](https://github.com/T1mof/previewForge/actions/runs/40938752311), source `b5a0af055519d0f35a83aa6358bf5702101808a6`: оба job **SUCCESS**, настоящий Calico kind **19/19**, report gate/cleanup **PASS**. Artifact `12927776379`, SHA256 `c994cb5fc82b389671f29b3483b97bfdb49e6b90b25f9d24e1e0f00582973869` скачан, digest совпал с API. Независимо проверены все прежние 18 результатов, 4 policy без type warnings, 10 конкретных отказов при разрешающем RBAC, 8 access reviews, сохранение чужих UID/resourceVersion, fail-closed, recovery и отсутствие приватных TLS-ключей. [Отчёт](verification/2026-10-30-admission.md), [контракт и TLS](ADMISSION.md).

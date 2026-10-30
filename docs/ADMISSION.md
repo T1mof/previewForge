@@ -118,4 +118,9 @@ later on a monitoring image-pull timeout. See the
 [verification report](verification/2026-10-30-admission.md) for exact evidence,
 cleanup retry and limitations.
 
+The configurable Helm namespace and exact server identity are additionally
+verified by [CI 40975721575](https://github.com/T1mof/previewForge/actions/runs/40975721575):
+20/20 including install, upgrade, rollback and uninstall from the packaged chart.
+See the [Helm verification report](verification/2026-10-30-helm.md).
+
 Reference: [Kubernetes ValidatingAdmissionPolicy](https://kubernetes.io/docs/reference/access-authn-authz/validating-admission-policy/).

@@ -117,5 +117,8 @@ EXIT/INT/TERM и CI `always()` cleanup сохранены.
 Для отладки прежнего Kustomize suite можно явно указать
 `PREVIEWFORGE_INSTALLER=kustomize`; это 19 проверок, без доказательства Helm
 lifecycle. Standalone Bash/PowerShell demo сохраняют Kustomize по умолчанию.
-Новые runtime результаты пока не подтверждены; milestone закрывается только
-после успешного полного прогона, cleanup и независимой проверки artifact.
+Runtime подтверждён [CI 40975721575](https://github.com/T1mof/previewForge/actions/runs/40975721575)
+на source `eb55483`: 20/20, cleanup PASS, artifact скачан и проверен независимо.
+Локальный запуск остановился до Helm deployment на Docker Hub TLS timeout,
+кластер очищен; локальный full 20/20 не заявляется.
+[Проверенный пакет, SHA256 и границы доказательств](verification/2026-10-30-helm.md).

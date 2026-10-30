@@ -60,7 +60,7 @@ python3 scripts/test-kind-scripts.py
 python3 scripts/test-e2e-cleanup.py
 ```
 
-Текущий harness выполняет 21 сценарий cleanup/demo с fake CLI и 4 проверки синтетического отчёта; Bash isolation проверяет 9 случаев, Windows — 7. Это регрессии защиты скриптов, а не приложение в Kubernetes. Они прошли 2026-10-27 вместе с Actionlint 1.7.12 и ShellCheck 0.9.0.
+Текущий harness выполняет 21 сценарий cleanup/demo с fake CLI и 5 проверок синтетического отчёта; Bash isolation проверяет 11 случаев, Windows — 7. Это регрессии защиты скриптов, не приложение в Kubernetes. Актуальный Helm milestone подтверждён настоящим CI kind 20/20: [отчёт](verification/2026-10-30-helm.md). `scripts/linux-checks.sh` также устанавливает проверенный Helm 4.3.1 в `bin/linux` и запускает chart lint/render/schema/package tests.
 
 Envtest запускает менеджер под идентичностью ServiceAccount из поставляемого RBAC; отдельно проверяет ограниченный PR deployer SA. Проверяются positive/negative SelfSubjectAccessReview, leader election, status subresource, HTTP 409 при конфликте Status/TTL Delete, UID precondition и отказ удаления чужого Namespace. Ready моделируется записью Deployment status: Deployment controller/kubelet/GC в envtest отсутствуют.
 
@@ -74,6 +74,14 @@ Envtest запускает менеджер под идентичностью Se
 
 Если Docker Engine работает в Windows, полный Bash-сценарий можно выполнить из **Git Bash**, используя Windows Go, Docker и kubectl. Это отдельный вариант запуска; Linux race/envtest по-прежнему выполняются в Ubuntu WSL2. В текущей среде этот путь проверен с kind 0.33.0, kubectl 1.36.1 и Kubernetes 1.37.0.
 
+Текущий полный suite требует Helm 4.3.1. Поместите `helm.exe` из
+[официального Windows amd64 архива](https://get.helm.sh/helm-v4.3.1-windows-amd64.zip)
+в `bin/`, предварительно сравнив SHA256 архива:
+`fcfd7b796dcf0f225abc40b5636a3b01f55f3de2fb1dfb18475df94e62c14112`.
+Проверьте `bin/helm.exe version --short`. Это установка инструмента в проект,
+системные PATH/настройки Helm менять не требуется. Full Helm 20/20 проверен
+в CI; локальный Helm-прогон остановился на Docker Hub TLS timeout до установки.
+
 ```bash
 cd /e/PreviewForge
 set -euo pipefail
@@ -83,6 +91,8 @@ export GOBIN="$(cygpath -w "$PWD/bin")"
 export PATH="$PWD/bin:$PATH"
 go install sigs.k8s.io/kind@v0.33.0
 go build -trimpath -o bin/previewctl.exe ./cmd/previewctl
+go build -trimpath -o bin/admissioncert.exe ./cmd/admissioncert
+export PREVIEWFORGE_PREVIEWCTL=previewctl.exe PREVIEWFORGE_ADMISSIONCERT=admissioncert.exe PREVIEWFORGE_HELM=helm.exe
 export PREVIEWFORGE_TEST_CLUSTER="previewforge-test-$(od -An -N4 -tx1 /dev/urandom | tr -d ' \n')"
 export PREVIEWFORGE_RUN_TOKEN="$(od -An -N16 -tx1 /dev/urandom | tr -d ' \n')"
 mkdir -p bin/ci

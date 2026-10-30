@@ -83,8 +83,9 @@ make test-integration
 Для установки через Helm подготовлен [chart](charts/previewforge) с настройками
 namespace, image, leader election, сети, HTTPS metrics и optional admission.
 Порядок работы с TLS, upgrade/rollback и сохранением CRD — в [HELM.md](docs/HELM.md).
-Новый Helm runtime milestone пока проходит проверку; результаты предыдущего
-проверенного admission source приведены выше.
+Helm lifecycle и полный Calico suite подтверждены [CI 20/20](https://github.com/T1mof/previewForge/actions/runs/40975721575):
+install из `.tgz`, upgrade/rollback без смены UID окружения и сохранение CRD/canary
+после uninstall. [Отчёт с проверенным artifact](docs/verification/2026-10-30-helm.md).
 
 Нужны Linux/WSL или macOS, работающий Docker Engine, Go, make, kubectl и Bash. Скрипт создаёт новый кластер `previewforge-test-<random>`, отказывается использовать существующий и сохраняет kubeconfig в `bin/runs/<cluster>/kubeconfig` с удобной копией `bin/kind.kubeconfig`. Затем строит image, загружает его в kind и ждёт Ready.
 

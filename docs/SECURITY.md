@@ -4,6 +4,14 @@
 
 ## Широкий RBAC
 
+Helm chart сохраняет эту модель. Admission по умолчанию выключен, как в
+`config/default`; guarded install требует `admission.enabled=true` и внешних
+TLS Secret/CA. Namespace установки согласован с пятью policy conditions и
+валидированным `--operator-identity` webhook. Private key не передаётся в Helm
+values и не входит в пакет. CRD, пользовательские CR и установочный Namespace
+сохраняются при uninstall; сначала завершите cleanup своих конкретных окружений.
+[Контракт Helm и проверенные границы](HELM.md).
+
 Оператор может изменять Namespace, Deployment и Service во всём кластере. Права нужны текущей реализации с динамическими Namespace и общим watch. Проверка ownerReferences/UID выполняется приложением; Kubernetes RBAC не умеет ограничивать права по labels, ownerReferences или префиксу имени. Отсутствие прямого чтения Secrets недостаточно: право создавать Deployment позволяет создать Pod с Secret volume или более привилегированным ServiceAccount. Это ограничение описано в [Kubernetes RBAC good practices](https://kubernetes.io/docs/concepts/security/rbac-good-practices/#workload-creation).
 
 Минимальные меры сейчас:

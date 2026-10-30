@@ -63,3 +63,9 @@ Requests по умолчанию 100m/64Mi, limits 500m/256Mi; API допуск�
 ## Проверяемость
 
 Unit-тесты проверяют логику с fake client и управляемыми часами. Fake client данной версии проверяет resourceVersion на Delete, но не UID precondition; UID дополнительно проверяется через настоящий API в envtest. Envtest запускает manager под ServiceAccount RBAC с leader election, проверяет CRD/defaulting/status, HTTP 409, настоящий watch/restart manager, но явно симулирует Deployment status. Полный lifecycle, HTTP, rollout и GC требуют kind. Тестовые scripts создают только новый локальный previewforge-test-* и отказываются использовать существующий кластер или удалённый Docker endpoint. См. [TESTING.md](TESTING.md) и [VERIFICATION.md](VERIFICATION.md).
+
+## Helm как слой установки
+
+Chart `charts/previewforge` упаковывает существующий оператор, leader-election RBAC, HTTPS metrics и optional admission. API и состояние окружений по-прежнему находятся в Kubernetes. Canonical CRD/RBAC/CEL синхронизируются в package из `config/`; проверки сравнивают копии и отрендеренные правила, чтобы упаковка не меняла права и политику владения. Namespace установки задаётся release; одна identity согласована между пятью matchConditions и отдельным webhook через validated `--operator-identity`.
+
+Поддерживается один cluster-wide controller installation на кластер с фиксированными global resource names. Helm проверяет ownership release при конфликте. CRD хранится в `crds/`, сохраняется после uninstall и обновляется отдельно администратором. Chart не создаёт пользовательские CR, Namespace установки или private TLS Secret. Cleanup конкретных окружений завершается до uninstall; release upgrade/rollback меняет Deployment оператора, сохраняя UID окружения. [Установка](HELM.md), [проверенный lifecycle 20/20](verification/2026-10-30-helm.md).
