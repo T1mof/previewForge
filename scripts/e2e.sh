@@ -172,6 +172,7 @@ EOF
 source scripts/e2e-metrics.sh
 source scripts/e2e-guardrails.sh
 source scripts/e2e-network.sh
+source scripts/e2e-stress.sh
 
 create_preview e2e-readiness 3600 81
 readiness_ns=''

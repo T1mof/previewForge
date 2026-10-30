@@ -241,3 +241,7 @@ make test-e2e
 - ClusterRole имеет cluster-wide доступ к Namespace/Deployment/Service; ownership guards не защищают от компрометации оператора. Envtest подтверждает текущие разрешения и guard logic, но не является нагрузочным или security audit.
 - Namespace является единицей владения/очистки: ресурсы, вручную помещённые в принадлежащий preview Namespace, удаляются вместе с ним. Чужие Namespace защищены проверкой controller owner reference, UID и resourceVersion.
 - Namespace изоляция не обеспечивает сетевую изоляцию; NetworkPolicy и дополнительные admission restrictions остаются вне этапа 1.
+
+## Нагрузочный и отказный профиль
+
+Общий e2e дополнен `load` и `faults`: 16 окружений и 4 TTL fixtures, admission fail-closed/recovery, остановка оператора с накоплением обновлений/удалений и сохранением foreign canary. Gate требует 22 ID с Helm, 21 с явным Kustomize, а также `stress-report.json`. Методика, задержки, метрики и ограничения — в [LOAD-TESTING.md](LOAD-TESTING.md). Проверки fake client / synthetic gate остаются проверками утилит, а не Kubernetes evidence. Новые результаты фиксируются отдельным отчётом после реального прогона.

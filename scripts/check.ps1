@@ -26,4 +26,5 @@ New-Item -ItemType Directory -Path $env:GOBIN -Force | Out-Null
 Invoke-Checked { go build -trimpath -o "$env:GOBIN\manager.exe" ./cmd/manager }
 Invoke-Checked { go build -trimpath -o "$env:GOBIN\previewctl.exe" ./cmd/previewctl }
 Invoke-Checked { go build -trimpath -o "$env:GOBIN\admissioncert.exe" ./cmd/admissioncert }
+Invoke-Checked { go build -trimpath -o "$env:GOBIN\stressbench.exe" ./test/e2e/stress }
 Invoke-Checked { kubectl kustomize config/default | Out-File -FilePath "$env:GOBIN\install.yaml" -Encoding utf8 }

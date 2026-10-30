@@ -97,7 +97,7 @@ def main():
             scripts.mkdir(parents=True)
             (fixture / "config" / "network-demo").mkdir(parents=True)
             shutil.copy2(ROOT / "config/network-demo/operator-patch.yaml", fixture / "config/network-demo/operator-patch.yaml")
-            for script in ("kind-demo.sh", "install-calico.sh", "ingress-demo.sh", "kind-lifecycle.sh", "cleanup-kind.sh", "e2e.sh", "e2e-ingress.sh", "e2e-pr.sh", "e2e-metrics.sh", "e2e-guardrails.sh", "e2e-network.sh", "e2e-admission.sh", "verify-e2e-result.sh"):
+            for script in ("kind-demo.sh", "install-calico.sh", "ingress-demo.sh", "kind-lifecycle.sh", "cleanup-kind.sh", "e2e.sh", "e2e-ingress.sh", "e2e-pr.sh", "e2e-metrics.sh", "e2e-guardrails.sh", "e2e-network.sh", "e2e-admission.sh", "e2e-stress.sh", "verify-e2e-result.sh"):
                 shutil.copy2(ROOT / "scripts" / script, scripts / script)
             if scenario == "successful-body":
                 # Exercise the successful EXIT path without pretending to run
@@ -198,12 +198,15 @@ def main():
                 # accepted as a completed application lifecycle suite.
                 assert subprocess.run(gate, cwd=fixture, env=env, capture_output=True).returncode != 0
                 print("report gate: incomplete lifecycle rejected PASS (synthetic report)")
-                checks.write_text("PASS: cluster-isolation: duplicate\n" * 19)
+                checks.write_text("PASS: cluster-isolation: duplicate\n" * 21)
                 assert subprocess.run(gate, cwd=fixture, env=env, capture_output=True).returncode != 0
                 print("report gate: duplicate checks rejected PASS (synthetic report)")
                 names = ("creation owners recreation drift restart http ingress pr-integration metrics guardrails network admission readiness finalizer ttl-active "
-                         "ttl-downtime manual-delete foreign-resources cluster-isolation").split()
+                         "ttl-downtime manual-delete foreign-resources cluster-isolation load faults").split()
                 checks.write_text("".join(f"PASS: {name}: synthetic fixture\n" for name in names))
+                assert subprocess.run(gate, cwd=fixture, env=env, capture_output=True).returncode != 0
+                print("report gate: missing load/fault evidence rejected PASS (synthetic report)")
+                (directory / "artifacts" / "stress-report.json").write_text('{"synthetic_fixture": true}')
                 assert subprocess.run(gate, cwd=fixture, env=env, capture_output=True).returncode == 0
                 print("report gate: complete evidence accepted PASS (synthetic report)")
                 helm_env = dict(env, PREVIEWFORGE_INSTALLER="helm")

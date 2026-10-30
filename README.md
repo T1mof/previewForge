@@ -189,3 +189,5 @@ kubectl --kubeconfig bin/kind.kubeconfig delete previewenvironment pr-42
 Если чужой ресурс занимает рассчитанное имя, оператор откажется его менять или удалять. При конфликте Namespace удаление CR останется заблокированным finalizer; сначала выясните причину и принадлежность Namespace. Не снимайте finalizer без проверки оставшихся ресурсов.
 
 Подробности: [архитектура](docs/ARCHITECTURE.md), [решения](docs/DECISIONS.md), [roadmap](docs/ROADMAP.md), [проверки](docs/TESTING.md), [исходное ТЗ](docs/SPECIFICATION.md). Лицензия: [MIT](LICENSE).
+
+Нагрузочный и отказный профиль (16 окружений, 4 параллельных автора, TTL и восстановление) описан в [LOAD-TESTING.md](docs/LOAD-TESTING.md). Измерения публикуются после полного Kubernetes прогона; исходные данные сохраняются в `stress-report.json`.

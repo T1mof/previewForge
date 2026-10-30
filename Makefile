@@ -49,6 +49,7 @@ build: | $(LOCALBIN)
 	go build -trimpath -o $(LOCALBIN)/manager ./cmd/manager
 	go build -trimpath -o $(LOCALBIN)/previewctl ./cmd/previewctl
 	go build -trimpath -o $(LOCALBIN)/admissioncert ./cmd/admissioncert
+	go build -trimpath -o $(LOCALBIN)/stressbench ./test/e2e/stress
 
 test-chart:
 	python3 scripts/sync-chart-assets.py --check
