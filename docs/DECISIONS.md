@@ -112,3 +112,18 @@ Webhook использует uncached reads и `failurePolicy: Fail`; его н�
 Chart использует один global набор ресурсов оператора и настраиваемый release namespace. Фиксированные ClusterRole/VAP/Webhook names и Helm ownership проверяют конфликт второй установки, поскольку два независимых cluster-wide контроллера наблюдали бы одни CR. Lease находится в namespace release и используется всеми репликами одной установки. Namespace и CA/Secret TLS задаёт администратор; chart согласует identity через общий helper и валидированный Go constructor. В Helm values/package нет private key. Demo helper поддерживает namespace и 48-часовой сертификат, постоянная ротация остаётся внешней обязанностью.
 
 CRD находится в стандартном `crds/`: uninstall сохраняет схему, upgrade/rollback не обновляют её автоматически. Chart не управляет user CR или установочным Namespace. Удаление release начинается после явного cleanup конкретных окружений. Generated CRD/RBAC/CEL/LICENSE assets копируются из canonical источников с проверкой дрейфа; render tests сравнивают полные policy specs и RBAC rules. Настоящий CI подтверждает установку из `.tgz`, HTTP, две реплики с исправлением drift, rollback, стабильность UID и CRD/canary retention, затем весь прежний suite. [Контракт](HELM.md), [artifact 20/20](verification/2026-10-30-helm.md).
+
+## 2026-10-30 — Ограниченный нагрузочный профиль
+
+Для эксплуатационных испытаний выбран воспроизводимый warm-image профиль из
+16 окружений с четырьмя авторами запросов и четырьмя отдельными TTL fixtures.
+Readiness требует текущих поколений и реальных Pod с проверенной цепочкой UID;
+HTTP подтверждает Service dataplane. Admission outage и простой оператора
+проверяются отдельно: это позволяет отличить восстановление записи без рестарта
+контроллера от обработки накопленного состояния после запуска нового Pod.
+
+Исходные задержки сохраняются вместе с nearest-rank p50/p95/max. При N=16 p95
+равен максимуму; выборка метрик каждые 5 секунд не доказывает истинный пик.
+Этот профиль подтверждает конкретное поведение, но не максимальную ёмкость,
+production SLO, отказ API server или смену лидера. Методика — в
+[LOAD-TESTING.md](LOAD-TESTING.md).

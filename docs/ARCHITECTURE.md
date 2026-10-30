@@ -69,3 +69,18 @@ Unit-тесты проверяют логику с fake client и управля
 Chart `charts/previewforge` упаковывает существующий оператор, leader-election RBAC, HTTPS metrics и optional admission. API и состояние окружений по-прежнему находятся в Kubernetes. Canonical CRD/RBAC/CEL синхронизируются в package из `config/`; проверки сравнивают копии и отрендеренные правила, чтобы упаковка не меняла права и политику владения. Namespace установки задаётся release; одна identity согласована между пятью matchConditions и отдельным webhook через validated `--operator-identity`.
 
 Поддерживается один cluster-wide controller installation на кластер с фиксированными global resource names. Helm проверяет ownership release при конфликте. CRD хранится в `crds/`, сохраняется после uninstall и обновляется отдельно администратором. Chart не создаёт пользовательские CR, Namespace установки или private TLS Secret. Cleanup конкретных окружений завершается до uninstall; release upgrade/rollback меняет Deployment оператора, сохраняя UID окружения. [Установка](HELM.md), [проверенный lifecycle 20/20](verification/2026-10-30-helm.md).
+
+## Контур нагрузочных испытаний
+
+`test/e2e/stress` собирается в отдельный `stressbench`, который не входит в image
+оператора или Helm release. Он использует uncached Kubernetes client для fixtures,
+Prometheus service proxy для выборки метрик и kubectl exec для настоящего HTTP.
+Оператору не добавляются benchmark endpoints, RBAC, зависимости или хранилище.
+Состояние окружений остаётся в Kubernetes; JSON-отчёт хранит наблюдения теста.
+
+Runner ограничен claim текущего нового kind, точными kubeconfig/context,
+loopback TLS endpoint и source Namespace UID. Creation UID каждой fixture
+фиксируется отдельно; label/name/status не разрешают принятие ресурсов под
+управление. Управляемые остановки admission и оператора выполняются с проверкой
+исходного UID Deployment и восстановлением при ошибке. Полный контракт и границы
+измерений — в [LOAD-TESTING.md](LOAD-TESTING.md).

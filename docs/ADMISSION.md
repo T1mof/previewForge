@@ -110,7 +110,7 @@ writes, fails closed during a real webhook outage, recovers after restart,
 and waits for actual temporary Namespace deletion. Dangerous Pod
 candidates use server dry-run so they are never scheduled. The artifact
 contains policy/binding snapshots, individual denial messages and
-`admission-checks.json`. The report gate requires all 19 check IDs plus
+`admission-checks.json`. The admission milestone required all 19 check IDs plus
 verified cluster cleanup. [CI run 40938752311](https://github.com/T1mof/previewForge/actions/runs/40938752311)
 passed all 19 checks and cleanup; the downloaded artifact was independently
 verified. The local admission block passed, while the full local suite stopped
@@ -124,3 +124,5 @@ verified by [CI 40975721575](https://github.com/T1mof/previewForge/actions/runs/
 See the [Helm verification report](verification/2026-10-30-helm.md).
 
 Reference: [Kubernetes ValidatingAdmissionPolicy](https://kubernetes.io/docs/reference/access-authn-authz/validating-admission-policy/).
+
+The current full Helm suite also includes load and recovery experiments: 22 check IDs, 21 with explicit Kustomize, plus `stress-report.json`. See [LOAD-TESTING.md](LOAD-TESTING.md). The historical admission 19/19 and Helm 20/20 proofs above remain scoped to their original commits.

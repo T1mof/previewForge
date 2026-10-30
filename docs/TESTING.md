@@ -1,5 +1,21 @@
 # Проверки
 
+## Нагрузка и восстановление — 2026-10-30
+
+[CI 41071421817](https://github.com/T1mof/previewForge/actions/runs/41071421817),
+source `f91ace7210ccf6f6125a01c096becfeab678915f`: оба job **SUCCESS**, **22/22**, gate и cleanup **PASS**.
+Artifact `12987182762`, SHA256 `d12c64623f3ff70011d834007122cea4128061387256501807e2e46969865377`, скачан и проверен независимо:
+все прежние 20 проверок плюс исходные задержки, UID/Pod/HTTP, admission recovery,
+простой оператора, TTL, canary и NotFound всех 20 fixtures.
+CI p95 создания — 12,711 с, восстановления оператора — 31,471 с, удаления —
+28,003 с. Это warm-image профиль 16 окружений / 4 автора, не capacity/SLO.
+[Полный отчёт и raw JSON](verification/2026-10-30-load-faults.md).
+
+Локально source f91ace7 focused load/faults и независимая проверка измерений —
+**PASS**, cleanup 0, кластер удалён. Полный local22 прошёл на 12b4761; его
+cleanup измерения были отклонены, детали исправлений и предварительных запусков
+сохранены в отчёте. Fakes/компиляция не считаются Kubernetes evidence.
+
 Актуализировано: 2026-10-30. Среда: Windows/amd64, Go 1.26.1; Ubuntu WSL2/Linux amd64, Go 1.26.9 и gcc 13.3. История ниже разделяет локальные проверки и GitHub-hosted kind; этап 1 завершён.
 
 ## Helm — подтверждённая проверка (2026-10-30)
@@ -244,4 +260,4 @@ make test-e2e
 
 ## Нагрузочный и отказный профиль
 
-Общий e2e дополнен `load` и `faults`: 16 окружений и 4 TTL fixtures, admission fail-closed/recovery, остановка оператора с накоплением обновлений/удалений и сохранением foreign canary. Gate требует 22 ID с Helm, 21 с явным Kustomize, а также `stress-report.json`. Методика, задержки, метрики и ограничения — в [LOAD-TESTING.md](LOAD-TESTING.md). Проверки fake client / synthetic gate остаются проверками утилит, а не Kubernetes evidence. Новые результаты фиксируются отдельным отчётом после реального прогона.
+Общий e2e дополнен `load` и `faults`: 16 окружений и 4 TTL fixtures, admission fail-closed/recovery, остановка оператора с накоплением обновлений/удалений и сохранением foreign canary. Gate требует 22 ID с Helm, 21 с явным Kustomize, а также `stress-report.json`. Методика, задержки, метрики и ограничения — в [LOAD-TESTING.md](LOAD-TESTING.md). Проверки fake client / synthetic gate остаются проверками утилит, а не Kubernetes evidence. Результаты подтверждены полным CI 22/22 и независимой проверкой; [отчёт](verification/2026-10-30-load-faults.md).

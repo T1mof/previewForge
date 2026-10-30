@@ -60,7 +60,7 @@ python3 scripts/test-kind-scripts.py
 python3 scripts/test-e2e-cleanup.py
 ```
 
-Текущий harness выполняет 21 сценарий cleanup/demo с fake CLI и 5 проверок синтетического отчёта; Bash isolation проверяет 11 случаев, Windows — 7. Это регрессии защиты скриптов, не приложение в Kubernetes. Актуальный Helm milestone подтверждён настоящим CI kind 20/20: [отчёт](verification/2026-10-30-helm.md). `scripts/linux-checks.sh` также устанавливает проверенный Helm 4.3.1 в `bin/linux` и запускает chart lint/render/schema/package tests.
+Текущий harness выполняет 21 сценарий cleanup/demo с fake CLI и 6 проверок синтетического отчёта; Bash isolation проверяет 11 случаев, Windows — 7. Это регрессии защиты скриптов, не приложение в Kubernetes. Helm milestone подтверждён настоящим CI kind 20/20: [отчёт](verification/2026-10-30-helm.md). `scripts/linux-checks.sh` также устанавливает проверенный Helm 4.3.1 в `bin/linux` и запускает chart lint/render/schema/package tests. Новые `load`/`faults` и методика измерений — в [LOAD-TESTING.md](LOAD-TESTING.md); текущий полный gate требует 22 ID с Helm или 21 с явным Kustomize и файл `stress-report.json`.
 
 Envtest запускает менеджер под идентичностью ServiceAccount из поставляемого RBAC; отдельно проверяет ограниченный PR deployer SA. Проверяются positive/negative SelfSubjectAccessReview, leader election, status subresource, HTTP 409 при конфликте Status/TTL Delete, UID precondition и отказ удаления чужого Namespace. Ready моделируется записью Deployment status: Deployment controller/kubelet/GC в envtest отсутствуют.
 
@@ -79,8 +79,11 @@ Envtest запускает менеджер под идентичностью Se
 в `bin/`, предварительно сравнив SHA256 архива:
 `fcfd7b796dcf0f225abc40b5636a3b01f55f3de2fb1dfb18475df94e62c14112`.
 Проверьте `bin/helm.exe version --short`. Это установка инструмента в проект,
-системные PATH/настройки Helm менять не требуется. Full Helm 20/20 проверен
-в CI; локальный Helm-прогон остановился на Docker Hub TLS timeout до установки.
+системные PATH/настройки Helm менять не требуется. Первый Helm milestone 20/20
+проверен в CI; его ранний локальный прогон остановился на Docker Hub TLS timeout.
+Новый локальный full suite 22/22 на `12b4761` подтвердил поведение и cleanup,
+но его задержки очистки отклонены независимым checker. Исправленный `f91ace7`
+прошёл локальный focused load/faults; [измерения и история проверок](verification/2026-10-30-load-faults.md).
 
 ```bash
 cd /e/PreviewForge
@@ -92,6 +95,7 @@ export PATH="$PWD/bin:$PATH"
 go install sigs.k8s.io/kind@v0.33.0
 go build -trimpath -o bin/previewctl.exe ./cmd/previewctl
 go build -trimpath -o bin/admissioncert.exe ./cmd/admissioncert
+go build -trimpath -o bin/stressbench.exe ./test/e2e/stress
 export PREVIEWFORGE_PREVIEWCTL=previewctl.exe PREVIEWFORGE_ADMISSIONCERT=admissioncert.exe PREVIEWFORGE_HELM=helm.exe
 export PREVIEWFORGE_TEST_CLUSTER="previewforge-test-$(od -An -N4 -tx1 /dev/urandom | tr -d ' \n')"
 export PREVIEWFORGE_RUN_TOKEN="$(od -An -N16 -tx1 /dev/urandom | tr -d ' \n')"
@@ -134,7 +138,7 @@ E2e создаёт новый `previewforge-test-<random>` и используе
 - Создание CR, Namespace/Deployment/Service, controller ownerReferences и Ready.
 - Настоящие готовые Pod; при закрытом readiness-порте работающий Pod не переводит CR в Ready, исправление порта завершает rollout.
 - Restricted example с настраиваемыми ресурсами; LimitRange defaults, admission-отказ privileged/oversized/CPU-overquota Pod, восстановление ResourceQuota/LimitRange и cleanup Namespace. На этапе resource controls gate требовал 17 check ID; результаты прежних suite сохраняют свои исторические counts.
-- Сетевой suite теперь требует 18 check ID и устанавливает Calico 3.33.0 в новый kind с отключённым default CNI. Проверяет реальные allow/deny через Pod IP/Service, CoreDNS UDP/TCP, публичный TCP с внешним положительным контролем, точные gateway peers/port, восстановление/restart и отзыв доступа. Контракт — в [NETWORK-ISOLATION.md](NETWORK-ISOLATION.md); наличие политики на kindnet не считается enforcement.
+- Сетевой этап расширил suite до 18 check ID; текущий полный suite с admission, Helm и нагрузкой требует 22. Устанавливается Calico 3.33.0 в новый kind с отключённым default CNI. Проверяются реальные allow/deny через Pod IP/Service, CoreDNS UDP/TCP, публичный TCP с внешним положительным контролем, точные gateway peers/port, восстановление/restart и отзыв доступа. Контракт — в [NETWORK-ISOLATION.md](NETWORK-ISOLATION.md); наличие политики на kindnet не считается enforcement.
 - Новая UID Deployment после его удаления; исправление drift replicas.
 - Изменение spec при остановленном операторе, актуальная generation и Ready после рестарта.
 - HTTP запросы к Service DNS и ClusterIP из настоящего Pod, ready EndpointSlice и содержимое ответа nginx.
@@ -164,7 +168,7 @@ Workflow: [operator-e2e.yml](../.github/workflows/operator-e2e.yml). Сраба�
 
 Оба job запускаются на GitHub-hosted `ubuntu-24.04` с Go 1.26.9. Первый выполняет vet/build/race/envtest под RBAC оператора и регрессии скриптов. Второй устанавливает kind 0.33.0 и kubectl 1.37.0 с проверкой checksum, создаёт новый `previewforge-test-ci-<run_id>-<attempt>` с отдельным kubeconfig, собирает и загружает отдельный image и запускает `scripts/e2e.sh`. Pipeline с `tee` сохраняет исходный exit code через Bash pipefail.
 
-Очистка: ранний EXIT/INT/TERM trap плюс отдельный `always()` шаг. Удаление разрешается только с claim/token текущего запуска и неизменным локальным Docker endpoint; при preflight отказе использовать существующий кластер claim не появляется и cleanup ничего не удаляет. Затем CI требует нулевые коды e2e/cleanup, все 16 различных check IDs (этап 1: 13, Ingress: ещё один, PR-компоненты: ещё один, metrics: ещё один) и `cleanup.txt` с подтверждённым отсутствием кластера. Diagnostics загружаются даже при ошибке; kubeconfig, token claim и credentials не входят в artifact paths. SIGKILL/потеря runner может помешать cleanup-скрипту; GitHub-hosted VM одноразовая, self-hosted runner здесь не используется.
+Очистка: ранний EXIT/INT/TERM trap плюс отдельный `always()` шаг. Удаление разрешается только с claim/token текущего запуска и неизменным локальным Docker endpoint; при preflight отказе использовать существующий кластер claim не появляется и cleanup ничего не удаляет. Затем CI требует нулевые коды e2e/cleanup, все 22 различных check IDs с Helm (21 с явным Kustomize), `stress-report.json` с исходными задержками и `cleanup.txt` с подтверждённым отсутствием кластера. Diagnostics загружаются даже при ошибке; kubeconfig, token claim и credentials не входят в artifact paths. SIGKILL/потеря runner может помешать cleanup-скрипту; GitHub-hosted VM одноразовая, self-hosted runner здесь не используется.
 
 Как запустить:
 
@@ -176,3 +180,5 @@ Workflow: [operator-e2e.yml](../.github/workflows/operator-e2e.yml). Сраба�
 Подтверждённый статус на 2026-10-27: локальный Docker доступен из Windows; настоящий `scripts/e2e.sh` прошёл через Git Bash все 13 проверок и удалил свой кластер. WSL Integration для Ubuntu выключена; прежний отказ Linux e2e на Docker preflight не мешает варианту Git Bash. Linux vet/build/race/envtest выполнены отдельно. Результаты и artifacts — в [TESTING.md](TESTING.md). Удалённый CI подтверждён: [run 40576650171](https://github.com/T1mof/previewForge/actions/runs/40576650171), commit 7d0a156, оба job SUCCESS. Скачанный artifact и cleanup проверены отдельно; см. [отчёт этапа 1](verification/2026-10-27-stage1.md). Риски RBAC, сети и удаления всего Namespace, включая условия применимости NetworkPolicy, — в [SECURITY.md](SECURITY.md).
 
 Источники по настройке среды: [Microsoft WSL](https://learn.microsoft.com/en-us/windows/wsl/install), [Kubebuilder envtest](https://book.kubebuilder.io/reference/envtest), [Docker Desktop WSL](https://docs.docker.com/desktop/features/wsl/), [установка kubectl в Linux](https://kubernetes.io/docs/tasks/tools/install-kubectl-linux/).
+
+Актуальный полный CI на `f91ace7`: [41071421817](https://github.com/T1mof/previewForge/actions/runs/41071421817), 22/22, gate/cleanup и downloaded artifact 12987182762 проверены. [Измерения и исходные данные](verification/2026-10-30-load-faults.md); локально та же ревизия прошла focused load/faults с независимой проверкой положительных задержек.

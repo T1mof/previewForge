@@ -4,7 +4,7 @@
 
 PreviewForge — Kubernetes Operator на Go для изолированных тестовых окружений. Пользователь создаёт cluster-scoped `PreviewEnvironment`; оператор создаёт Namespace, Deployment и Service, согласовывает состояние и удаляет окружение по TTL.
 
-Реализована основа этапа 1; 2026-10-27 настоящий lifecycle в локальном kind прошёл все 13 проверок, включая HTTP, рестарт, TTL и полное удаление Namespace и тестового кластера. Команды для WSL2 и Git Bash описаны в [VERIFICATION.md](docs/VERIFICATION.md); реальные результаты — в [TESTING.md](docs/TESTING.md). GitHub Actions также прошёл: [run 40576650171](https://github.com/T1mof/previewForge/actions/runs/40576650171), оба job SUCCESS; [отчёт с проверенным artifact](docs/verification/2026-10-27-stage1.md). Этап 1 завершён. Автоматическая связь с Pull Request относится к этапу 2.
+Проверены lifecycle, HTTP/Ingress, изоляция Calico, admission, monitoring, Helm и нагрузочный/отказный профиль: [CI 41071421817](https://github.com/T1mof/previewForge/actions/runs/41071421817), **22/22 с cleanup**, [отчёт с исходными измерениями](docs/verification/2026-10-30-load-faults.md). Внешняя PR-интеграция подготовлена и выключена до выбора отдельного demo-кластера. Запуск и история проверок — в [VERIFICATION.md](docs/VERIFICATION.md) и [TESTING.md](docs/TESTING.md).
 
 ```mermaid
 flowchart LR
@@ -34,6 +34,7 @@ flowchart LR
 - TTL от времени создания CR и finalizer, ожидающий фактического удаления Namespace.
 - Watch дочерних ресурсов, четыре reconcile worker, optimistic locking, leader election в Deployment оператора.
 - Unit-тесты, envtest suite для Linux/macOS и сценарий e2e в выделенном kind-кластере.
+- Нагрузочный профиль 16 окружений / 4 автора, actual Pod/HTTP, восстановление admission и оператора, TTL и безопасная очистка: [методика](docs/LOAD-TESTING.md), [отчёт с исходными измерениями](docs/verification/2026-10-30-load-faults.md).
 - Предметные inventory metrics из Kubernetes, HTTPS endpoint с authn/authz, optional Prometheus/Grafana demo и dashboard: [наблюдаемость](docs/OBSERVABILITY.md).
 - CLI `previewctl`, отдельный deployer RBAC, example Go HTTP server и выключенный PR workflow: immutable image, актуальный head, update/close и проверка владельца по UID. [Подготовка отдельного кластера](docs/PR-INTEGRATION.md); размещение и внешний PR lifecycle будут проверены позже.
 
@@ -189,5 +190,3 @@ kubectl --kubeconfig bin/kind.kubeconfig delete previewenvironment pr-42
 Если чужой ресурс занимает рассчитанное имя, оператор откажется его менять или удалять. При конфликте Namespace удаление CR останется заблокированным finalizer; сначала выясните причину и принадлежность Namespace. Не снимайте finalizer без проверки оставшихся ресурсов.
 
 Подробности: [архитектура](docs/ARCHITECTURE.md), [решения](docs/DECISIONS.md), [roadmap](docs/ROADMAP.md), [проверки](docs/TESTING.md), [исходное ТЗ](docs/SPECIFICATION.md). Лицензия: [MIT](LICENSE).
-
-Нагрузочный и отказный профиль (16 окружений, 4 параллельных автора, TTL и восстановление) описан в [LOAD-TESTING.md](docs/LOAD-TESTING.md). Измерения публикуются после полного Kubernetes прогона; исходные данные сохраняются в `stress-report.json`.
